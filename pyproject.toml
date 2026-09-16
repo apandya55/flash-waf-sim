@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flash-waf-sim"
+version = "0.1.0"
+description = "NAND Flash Translation Layer (FTL) and Write Amplification Factor (WAF) Simulator with Ring Buffering"
+readme = "README.md"
+authors = [
+    { name = "Arnav Pandya" }
+]
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.22.0",
+    "matplotlib>=3.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-v --strict-markers"
+testpaths = ["tests"]
+pythonpath = ["."]
+
