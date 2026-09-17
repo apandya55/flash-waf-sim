@@ -13,6 +13,11 @@ from enum import Enum
 from typing import Any, Optional
 
 
+class FlashOutOfSpaceError(Exception):
+    """Raised when NAND flash capacity is exhausted and no space can be reclaimed."""
+    pass
+
+
 class PageState(str, Enum):
     """Lifecycle states of a physical NAND flash page.
     

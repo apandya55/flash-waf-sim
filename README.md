@@ -2,8 +2,8 @@
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-13%20passed-brightgreen.svg)]()
-[![Status](https://img.shields.io/badge/status-Phase%201%20Complete-success.svg)]()
+[![Tests](https://img.shields.io/badge/tests-21%20passed-brightgreen.svg)]()
+[![Status](https://img.shields.io/badge/status-Phase%202%20Complete-success.svg)]()
 
 A high-fidelity Python simulation of **NAND Flash Memory**, the **Flash Translation Layer (FTL)**, and the **Write Amplification Factor (WAF)** under varying workload patterns.
 
@@ -32,7 +32,7 @@ As free blocks become exhausted, the drive must perform **Garbage Collection (GC
 * Erase the victim block to reclaim free space.
 
 These internal copy operations cause **Write Amplification (WAF)**:
-$$\text{WAF} = \frac{\text{Total Physical Bytes Programmed to Flash}}{\text{Total Host Logical Bytes Written}} = \frac{(\text{physical\_page\_writes} + \text{gc\_page\_copies}) \times \text{Page Size}}{\text{Host Bytes}}$$
+$$\text{WAF} = \frac{\text{Total Physical Bytes Programmed to Flash}}{\text{Total Host Logical Bytes Written}} = \frac{(\text{Physical Writes} + \text{GC Page Copies}) \times \text{Page Size}}{\text{Host Bytes Written}}$$
 
 Each block has a finite Program/Erase (P/E) endurance cycle limit before silicon oxide breakdown occurs. High WAF prematurely degrades SSD lifespan.
 
@@ -162,8 +162,8 @@ python3 demo_phase1.py
 | Phase | Description | Status |
 | :--- | :--- | :---: |
 | **Phase 1** | **Storage Data Structures & State Model**<br>Dataclasses for `Page` and `Block`, 3-state lifecycle, `FlashSimulator` with L2P mapping and hardware counters, full `pytest` suite. | **Completed** |
-| **Phase 2** | **Page Allocation & Greedy Garbage Collection**<br>`write_logical_page(lba, data)`, out-of-place invalidation, greedy victim block selection, valid page relocation, erase cycling. | *Next* |
-| **Phase 3** | **Ring Buffering & Workload Simulation**<br>`RingBuffer` implementation (128-byte to 4 KiB aggregation), synthetic random update workloads (3.2 MB), baseline vs. buffered WAF comparison. | *Planned* |
+| **Phase 2** | **Page Allocation & Greedy Garbage Collection**<br>`write_logical_page(lba, data)`, out-of-place invalidation, greedy victim block selection, valid page relocation, erase cycling. | **Completed** |
+| **Phase 3** | **Ring Buffering & Workload Simulation**<br>`RingBuffer` implementation (128-byte to 4 KiB aggregation), synthetic random update workloads (3.2 MB), baseline vs. buffered WAF comparison. | *Next* |
 | **Phase 4** | **Durability Modeling & Wear Heatmaps**<br>Sudden power loss simulation, uncommitted byte loss quantification across flush policies, `matplotlib` wear heatmaps. | *Planned* |
 
 ---
