@@ -7,8 +7,9 @@ Models the physical characteristics of NAND Flash memory, including:
 - Volatile buffering (Ring Buffer) and durability trade-offs
 """
 
+from flash_sim.buffer import RingBuffer
 from flash_sim.models import Block, FlashOutOfSpaceError, Page, PageState
 from flash_sim.simulator import FlashSimulator
 
-__all__ = ["PageState", "Page", "Block", "FlashSimulator", "FlashOutOfSpaceError"]
+__all__ = ["PageState", "Page", "Block", "FlashSimulator", "FlashOutOfSpaceError", "RingBuffer"]
 

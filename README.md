@@ -2,8 +2,8 @@
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-21%20passed-brightgreen.svg)]()
-[![Status](https://img.shields.io/badge/status-Phase%202%20Complete-success.svg)]()
+[![Tests](https://img.shields.io/badge/tests-27%20passed-brightgreen.svg)]()
+[![Status](https://img.shields.io/badge/status-Phase%203%20Complete-success.svg)]()
 
 A high-fidelity Python simulation of **NAND Flash Memory**, the **Flash Translation Layer (FTL)**, and the **Write Amplification Factor (WAF)** under varying workload patterns.
 
@@ -149,10 +149,40 @@ tests/test_phase1.py::test_custom_dimensions PASSED
 ============================== 13 passed in 0.03s ==============================
 ```
 
-### 4. Run the Phase 1 Interactive Demo
-Run the demonstration script to inspect block states, page updates, and block erasure:
+### 4. Run Demos & Benchmarks
+
+#### Run Phase 1 & 2 Demos
 ```bash
 python3 demo_phase1.py
+python3 demo_phase2.py
+```
+
+#### Run Phase 3 Comparative Benchmark (3.2 MB Workload)
+```bash
+python3 benchmark_phase3.py
+```
+
+Benchmark output:
+```text
+================================================================================
+                      COMPARATIVE BENCHMARK RESULTS
+================================================================================
+Metric                              | Unbuffered Baseline | Ring-Buffered     
+--------------------------------------------------------------------------------
+Host Data Issued                    |            3.05 MB |            3.05 MB
+Host Page Writes Issued             |             25,000 |                782
+GC Page Copies Triggered            |             26,713 |                  0
+Total Physical Page Writes          |             51,713 |                782
+Total Physical Silicon Bytes        |          202.00 MB |            3.05 MB
+Block Erasures (P/E Wear)           |                747 |                  0
+--------------------------------------------------------------------------------
+Write Amplification Factor (WAF)    |             66.193 |              1.001
+================================================================================
+
+[>>>] KEY FINDINGS:
+      1. Write Amplification Reduction: 66.1x lower WAF (66.19 -> 1.00)
+      2. Flash Block Erasure Reduction: 100.0% fewer block erasures (747 -> 0)
+      3. Silicon Endurance Impact: Extends NAND flash lifespan by approximately 66x!
 ```
 
 ---
@@ -163,8 +193,8 @@ python3 demo_phase1.py
 | :--- | :--- | :---: |
 | **Phase 1** | **Storage Data Structures & State Model**<br>Dataclasses for `Page` and `Block`, 3-state lifecycle, `FlashSimulator` with L2P mapping and hardware counters, full `pytest` suite. | **Completed** |
 | **Phase 2** | **Page Allocation & Greedy Garbage Collection**<br>`write_logical_page(lba, data)`, out-of-place invalidation, greedy victim block selection, valid page relocation, erase cycling. | **Completed** |
-| **Phase 3** | **Ring Buffering & Workload Simulation**<br>`RingBuffer` implementation (128-byte to 4 KiB aggregation), synthetic random update workloads (3.2 MB), baseline vs. buffered WAF comparison. | *Next* |
-| **Phase 4** | **Durability Modeling & Wear Heatmaps**<br>Sudden power loss simulation, uncommitted byte loss quantification across flush policies, `matplotlib` wear heatmaps. | *Planned* |
+| **Phase 3** | **Ring Buffering & Workload Simulation**<br>`RingBuffer` implementation (128-byte to 4 KiB aggregation), synthetic random update workloads (3.2 MB), baseline vs. buffered WAF comparison. | **Completed** |
+| **Phase 4** | **Durability Modeling & Wear Heatmaps**<br>Sudden power loss simulation, uncommitted byte loss quantification across flush policies, `matplotlib` wear heatmaps. | *Next* |
 
 ---
 
