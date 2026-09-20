@@ -134,21 +134,29 @@ class RingBuffer:
         self._head = 0
         self._tail = 0
 
-        # Pack into full page payload (4096 bytes)
-        payload = b"".join(drained_records)
-        if len(payload) < self.page_size_bytes:
-            payload = payload.ljust(self.page_size_bytes, b"\x00")
+        # Number of records per physical flash page (e.g., 4096 / 128 = 32 records)
+        records_per_page = max(1, self.page_size_bytes // self.record_size_bytes)
+        last_coord: Optional[Tuple[int, int]] = None
 
-        # Determine target LBA
-        if target_lba is not None:
-            lba_to_write = target_lba
-        else:
-            lba_to_write = self._next_lba
-            self._next_lba = (self._next_lba + 1) % self.max_logical_pages
+        # Flush in chunks of records_per_page to ensure physical 4 KiB page alignment
+        for i in range(0, len(drained_records), records_per_page):
+            chunk = drained_records[i : i + records_per_page]
+            payload = b"".join(chunk)
+            if len(payload) < self.page_size_bytes:
+                payload = payload.ljust(self.page_size_bytes, b"\x00")
+            elif len(payload) > self.page_size_bytes:
+                payload = payload[: self.page_size_bytes]
 
-        coord = self.flash_sim.write_logical_page(lba=lba_to_write, data=payload)
-        self.total_flushes += 1
-        return coord
+            if target_lba is not None:
+                lba_to_write = target_lba + (i // records_per_page)
+            else:
+                lba_to_write = self._next_lba
+                self._next_lba = (self._next_lba + 1) % self.max_logical_pages
+
+            last_coord = self.flash_sim.write_logical_page(lba=lba_to_write, data=payload)
+            self.total_flushes += 1
+
+        return last_coord
 
     def get_buffered_records(self) -> List[bytes]:
         """Return a copy of records currently queued in volatile memory without removing them."""

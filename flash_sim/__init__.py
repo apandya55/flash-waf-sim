@@ -8,8 +8,18 @@ Models the physical characteristics of NAND Flash memory, including:
 """
 
 from flash_sim.buffer import RingBuffer
+from flash_sim.durability import DurabilityResult, PowerLossSimulator
 from flash_sim.models import Block, FlashOutOfSpaceError, Page, PageState
 from flash_sim.simulator import FlashSimulator
 
-__all__ = ["PageState", "Page", "Block", "FlashSimulator", "FlashOutOfSpaceError", "RingBuffer"]
+__all__ = [
+    "PageState",
+    "Page",
+    "Block",
+    "FlashSimulator",
+    "FlashOutOfSpaceError",
+    "RingBuffer",
+    "PowerLossSimulator",
+    "DurabilityResult",
+]
 
