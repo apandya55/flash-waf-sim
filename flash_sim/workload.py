@@ -40,3 +40,4 @@ def generate_workload(
         workload.append((int(lba), payload))
 
     return workload
+
