@@ -1,8 +1,7 @@
-"""Phase 5: Comprehensive Visualizations & Extended Experiments.
+"""Research Visualizations Suite & Extended Parameter Sweeps.
 
-Generates 8 publication-quality figures exploring the full design space of the
-flash-waf-sim study. Each figure is produced by a dedicated function; main()
-orchestrates them all and saves PNGs to the figures/ directory.
+Generates 8 publication-quality figures exploring the design space of the
+flash-waf-sim study. All figures are saved to the 'figures/' directory.
 
 Figures:
     1. WAF vs. Buffer Size (log-scale diminishing-returns curve with discrete categorical spacing)
@@ -18,22 +17,26 @@ Figures:
 from __future__ import annotations
 
 import os
+import sys
 import time
 from typing import Any, Dict, List, Optional, Tuple
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
 import numpy as np
 
-from benchmark_phase3 import generate_workload
-from flash_sim.buffer import RingBuffer
-from flash_sim.durability import PowerLossSimulator
-from flash_sim.models import PageState
-from flash_sim.simulator import FlashSimulator
+from flash_sim import (
+    FlashSimulator,
+    PageState,
+    PowerLossSimulator,
+    RingBuffer,
+    generate_workload,
+)
 
-
-# ── Global style ──────────────────────────────────────────────────────────────
+# Global style configuration
 plt.rcParams.update({
     "font.family": "sans-serif",
     "font.size": 10,
@@ -45,15 +48,11 @@ plt.rcParams.update({
     "savefig.bbox": "tight",
 })
 
-FIGURES_DIR = os.path.join(os.path.dirname(__file__) or ".", "figures")
+FIGURES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "figures")
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# FIGURE 1: WAF vs. Buffer Size Curve (Categorical X-Spacing)
-# ═══════════════════════════════════════════════════════════════════════════════
 
 def fig1_waf_vs_buffer_size(workload: List[Tuple[int, bytes]]) -> str:
-    """Sweep buffer capacity using discrete categorical spacing to prevent tick bunching."""
+    """Sweep buffer capacity using discrete categorical spacing."""
     buffer_sizes = [1, 2, 4, 8, 16, 32, 64, 128]
     wafs: List[float] = []
     erasures: List[int] = []
@@ -76,12 +75,10 @@ def fig1_waf_vs_buffer_size(workload: List[Tuple[int, bytes]]) -> str:
     color_waf = "#1D4ED8"
     color_era = "#DC2626"
 
-    # Use discrete integer indices for x to guarantee equal spacing between buffer sizes
     x_indices = np.arange(len(buffer_sizes))
     x_labels = [f"{s} rec\n({s * 128} B)" if s * 128 < 1024 else f"{s} rec\n({s * 128 // 1024} KiB)"
                 for s in buffer_sizes]
 
-    # Bar chart on secondary y-axis for block erasures
     ax2 = ax1.twinx()
     ax2.set_ylabel("Block Erasures (P/E Wear Cycles)", color=color_era, fontsize=11, labelpad=10)
     bars = ax2.bar(x_indices, erasures, width=0.45, alpha=0.25, color=color_era,
@@ -89,7 +86,6 @@ def fig1_waf_vs_buffer_size(workload: List[Tuple[int, bytes]]) -> str:
     ax2.set_ylim(0, 850)
     ax2.tick_params(axis="y", labelcolor=color_era)
 
-    # Line chart on primary y-axis for WAF
     ax1.set_xlabel("Ring Buffer Capacity", fontsize=11, labelpad=10)
     ax1.set_ylabel("Write Amplification Factor (WAF)", color=color_waf, fontsize=11, labelpad=10)
     line1 = ax1.plot(x_indices, wafs, "o-", color=color_waf, linewidth=2.8,
@@ -100,7 +96,6 @@ def fig1_waf_vs_buffer_size(workload: List[Tuple[int, bytes]]) -> str:
     ax1.set_xticks(x_indices)
     ax1.set_xticklabels(x_labels, fontsize=9.5)
 
-    # Annotate WAF values with carefully positioned offsets above markers
     for i, (x_pos, waf_val) in enumerate(zip(x_indices, wafs)):
         ax1.annotate(
             f"{waf_val:.1f}×",
@@ -114,12 +109,10 @@ def fig1_waf_vs_buffer_size(workload: List[Tuple[int, bytes]]) -> str:
             bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="none", alpha=0.85),
         )
 
-    # Add theoretical minimum reference line with label placed safely below the line
     ax1.axhline(y=1.0, color="#6B7280", linestyle="--", linewidth=1.2, alpha=0.7, zorder=3)
     ax1.text(0.1, 0.72, "--- WAF = 1.0 (Theoretical Lower Bound)",
              va="center", ha="left", fontsize=9, color="#4B5563", fontstyle="italic")
 
-    # Unified clean legend
     lines = line1 + [bars]
     labels = ["WAF (log scale)", "Block Erasures (linear scale)"]
     ax1.legend(lines, labels, loc="upper right", framealpha=0.95, edgecolor="#E5E7EB", fontsize=9.5)
@@ -135,10 +128,6 @@ def fig1_waf_vs_buffer_size(workload: List[Tuple[int, bytes]]) -> str:
     plt.close(fig)
     return path
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# FIGURE 2: Cumulative Block Erasure Timeline
-# ═══════════════════════════════════════════════════════════════════════════════
 
 def fig2_erasure_timeline(workload: List[Tuple[int, bytes]]) -> str:
     """Track cumulative erasures over workload progress for unbuffered vs. buffered."""
@@ -173,7 +162,6 @@ def fig2_erasure_timeline(workload: List[Tuple[int, bytes]]) -> str:
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.5))
 
-    # Left: Cumulative erasures
     ax1.plot(x, unbuf_erasures, "-", color="#DC2626", linewidth=2.5,
              label=f"Direct Unbuffered (Final: {unbuf_erasures[-1]:,})")
     ax1.plot(x, buf_erasures, "-", color="#059669", linewidth=2.5,
@@ -186,7 +174,6 @@ def fig2_erasure_timeline(workload: List[Tuple[int, bytes]]) -> str:
     ax1.legend(loc="upper left", framealpha=0.9, fontsize=9.5)
     ax1.grid(True, alpha=0.25, linestyle=":")
 
-    # Right: Cumulative GC copies
     ax2.plot(x, unbuf_gc_copies, "-", color="#DC2626", linewidth=2.5,
              label=f"Direct Unbuffered (Final: {unbuf_gc_copies[-1]:,})")
     ax2.plot(x, buf_gc_copies, "-", color="#059669", linewidth=2.5,
@@ -208,10 +195,6 @@ def fig2_erasure_timeline(workload: List[Tuple[int, bytes]]) -> str:
     plt.close(fig)
     return path
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# FIGURE 3: GC Overhead Stacked Bar
-# ═══════════════════════════════════════════════════════════════════════════════
 
 def fig3_gc_overhead_breakdown(workload: List[Tuple[int, bytes]]) -> str:
     """Stacked bar: host writes vs GC copies for each buffer size with clean labels."""
@@ -243,7 +226,6 @@ def fig3_gc_overhead_breakdown(workload: List[Tuple[int, bytes]]) -> str:
            label="GC Page Copies (Wasted Overhead)", color="#F59E0B",
            edgecolor="white", linewidth=1.0)
 
-    # Position labels cleanly above the bars with generous clearance
     max_total = max(hw + gc for hw, gc in zip(host_writes, gc_copies))
     ax.set_ylim(0, max_total * 1.15)
 
@@ -274,12 +256,8 @@ def fig3_gc_overhead_breakdown(workload: List[Tuple[int, bytes]]) -> str:
     return path
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# FIGURE 4: Working Set Size Sensitivity (Log X-Scale)
-# ═══════════════════════════════════════════════════════════════════════════════
-
 def fig4_working_set_sensitivity() -> str:
-    """Vary num_lbas and measure WAF + erasures using log x-scale to eliminate label crowd."""
+    """Vary num_lbas and measure WAF + erasures using log x-scale."""
     lba_counts = [100, 200, 400, 800, 1600, 3200]
     num_updates = 25000
 
@@ -292,7 +270,6 @@ def fig4_working_set_sensitivity() -> str:
         wl = generate_workload(num_updates=num_updates, record_size=128,
                                num_lbas=n_lbas, seed=42)
 
-        # Unbuffered
         sim_u = FlashSimulator(num_blocks=64, pages_per_block=64)
         for lba, data in wl:
             sim_u.write_logical_page(lba=lba, data=data)
@@ -301,7 +278,6 @@ def fig4_working_set_sensitivity() -> str:
         unbuf_wafs.append(pb / hb)
         unbuf_erasures.append(sim_u.block_erasures)
 
-        # Buffered
         sim_b = FlashSimulator(num_blocks=64, pages_per_block=64)
         buf = RingBuffer(flash_sim=sim_b, capacity_records=32,
                          record_size_bytes=128, page_size_bytes=4096)
@@ -314,7 +290,6 @@ def fig4_working_set_sensitivity() -> str:
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.5))
 
-    # Left: WAF comparison on log-log axes
     ax1.plot(lba_counts, unbuf_wafs, "o-", color="#DC2626", linewidth=2.5,
              markersize=8, label="Direct Unbuffered")
     ax1.plot(lba_counts, buf_wafs, "s-", color="#059669", linewidth=2.5,
@@ -330,7 +305,6 @@ def fig4_working_set_sensitivity() -> str:
     ax1.legend(loc="upper left", framealpha=0.9, fontsize=9.5)
     ax1.grid(True, alpha=0.25, linestyle=":")
 
-    # Capacity utilization annotations placed cleanly above points
     for i, n in enumerate(lba_counts):
         util_pct = n / 4096 * 100
         ax1.annotate(
@@ -345,7 +319,6 @@ def fig4_working_set_sensitivity() -> str:
             bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="none", alpha=0.85),
         )
 
-    # Right: Categorical bar comparison of block erasures
     x_indices = np.arange(len(lba_counts))
     bar_width = 0.35
     ax2.bar(x_indices - bar_width / 2, unbuf_erasures, width=bar_width,
@@ -361,7 +334,6 @@ def fig4_working_set_sensitivity() -> str:
     ax2.legend(loc="upper left", framealpha=0.9, fontsize=9.5)
     ax2.grid(axis="y", alpha=0.25, linestyle=":")
 
-    # Add numeric labels to bars
     for i, val in enumerate(unbuf_erasures):
         ax2.text(i - bar_width / 2, val + 15, f"{val}", ha="center", fontsize=8.5,
                  fontweight="bold", color="#7F1D1D")
@@ -376,12 +348,8 @@ def fig4_working_set_sensitivity() -> str:
     return path
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# FIGURE 5: Durability vs. WAF Pareto Frontier (Cleaned Margins & Spacing)
-# ═══════════════════════════════════════════════════════════════════════════════
-
 def fig5_durability_pareto() -> str:
-    """Scatter plot of durability rate vs WAF_committed with zero text collisions."""
+    """Scatter plot of durability rate vs WAF_committed with zero collisions."""
     num_updates = 25000
     num_crashes = 50
     seed = 42
@@ -415,26 +383,21 @@ def fig5_durability_pareto() -> str:
         labels.append(name)
 
     fig, ax = plt.subplots(figsize=(10, 6.5))
-
     colors = ["#DC2626", "#2563EB", "#7C3AED", "#D97706"]
 
-    # Shaded optimal zone with generous clearance from axes
     ax.fill_between([0, 5], 95, 102, alpha=0.08, color="#059669", zorder=1)
     ax.text(6.0, 99.2, "★ Optimal Sweet Spot\n(WAF ≈ 1.0, Durability > 97%)",
             fontsize=9.5, color="#059669", va="center", fontweight="bold",
             bbox=dict(boxstyle="round,pad=0.3", facecolor="#ECFDF5", edgecolor="#A7F3D0"))
 
-    # Connect Pareto frontier points
     sorted_pts = sorted(zip(waf_vals, dur_vals), key=lambda p: (p[0], -p[1]))
     ax.plot([p[0] for p in sorted_pts], [p[1] for p in sorted_pts],
             "--", color="#9CA3AF", linewidth=1.5, zorder=2)
 
-    # Plot points and individual annotations with custom offsets
     for i, (w, d, lbl, c) in enumerate(zip(waf_vals, dur_vals, labels, colors)):
         ax.scatter(w, d, s=160, c=c, zorder=5, edgecolors="white", linewidth=2)
 
         if "Direct Unbuffered" in lbl:
-            # Place top right, offset to the left of the marker
             ax.annotate(
                 f"{lbl}\nWAF: {w:.1f}× | Durability: {d:.1f}%",
                 (w, d),
@@ -472,7 +435,7 @@ def fig5_durability_pareto() -> str:
                 color=c,
                 bbox=dict(boxstyle="round,pad=0.3", facecolor="white", edgecolor=c, alpha=0.9),
             )
-        else:  # 4-Page
+        else:
             ax.annotate(
                 f"{lbl}\nWAF: {w:.3f}× | Durability: {d:.1f}%",
                 (w, d),
@@ -501,12 +464,8 @@ def fig5_durability_pareto() -> str:
     return path
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# FIGURE 6: Power Loss Data Loss Distribution (Box Plot with Clean Padding)
-# ═══════════════════════════════════════════════════════════════════════════════
-
 def fig6_power_loss_boxplot() -> str:
-    """Box plot of per-crash byte loss across 10 random seeds with clean axis margins."""
+    """Box plot of per-crash byte loss across 10 random seeds."""
     num_updates = 25000
     num_crashes = 50
     seeds = list(range(42, 52))
@@ -542,10 +501,7 @@ def fig6_power_loss_boxplot() -> str:
     short_labels = ["Unbuffered\n(128 B)", "1-Page Buffer\n(4 KiB)", "2-Page Buffer\n(8 KiB)", "4-Page Buffer\n(16 KiB)"]
     colors = ["#059669", "#2563EB", "#7C3AED", "#DC2626"]
 
-    # Generous y-limit so 0 isn't crushed against the bottom edge
     ax.set_ylim(-500, 10000)
-
-    # Shaded zero-loss banner placed cleanly at the top of column 1
     ax.axhspan(-400, 100, alpha=0.08, color="#059669", zorder=0)
 
     bp = ax.boxplot(data_arrays, tick_labels=short_labels, patch_artist=True,
@@ -560,18 +516,15 @@ def fig6_power_loss_boxplot() -> str:
         patch.set_facecolor(color)
         patch.set_alpha(0.70)
 
-    # Overlay jittered data points with distinct styling
     rng_jitter = np.random.RandomState(99)
     for i, (arr, c) in enumerate(zip(data_arrays, colors)):
         jitter = rng_jitter.uniform(-0.10, 0.10, size=len(arr))
         ax.scatter([i + 1 + j for j in jitter], arr, s=36, color=c,
                    edgecolors="white", linewidth=1.0, alpha=0.9, zorder=5)
 
-    # Add clean text annotation above column 1 rather than colliding with 0
     ax.text(1.0, 700, "Zero Loss\n(100% Durable)", ha="center", va="bottom",
             fontsize=8.5, fontweight="bold", color="#059669")
 
-    # Annotate mean value above each box
     for i, arr in enumerate(data_arrays):
         m_val = float(np.mean(arr))
         if m_val > 0:
@@ -592,12 +545,8 @@ def fig6_power_loss_boxplot() -> str:
     return path
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# FIGURE 7: Page State Evolution Snapshots (Zero Collisions)
-# ═══════════════════════════════════════════════════════════════════════════════
-
 def fig7_page_state_evolution(workload: List[Tuple[int, bytes]]) -> str:
-    """4-panel snapshots of 64×64 page state grid with zero text overlap."""
+    """4-panel snapshots of 64×64 page state grid with zero collisions."""
     total = len(workload)
     checkpoints = [total // 4, total // 2, 3 * total // 4, total]
     step_labels = ["25% Workload", "50% Workload", "75% Workload", "100% Workload"]
@@ -633,16 +582,13 @@ def fig7_page_state_evolution(workload: List[Tuple[int, bytes]]) -> str:
 
     for idx, (ax, grid, label, (nf, nv, ni)) in enumerate(zip(axes.flat, snapshots, step_labels, stats)):
         ax.imshow(grid, cmap=cmap, norm=norm, aspect="auto", interpolation="nearest")
-
-        # Include summary stats directly in the subplot title to prevent any collision at bottom
         ax.set_title(f"{label}\nValid: {nv:,} ({nv/40.96:.0f}%) | Invalid: {ni:,} ({ni/40.96:.0f}%) | Free: {nf}",
                      fontsize=10.5, fontweight="bold", pad=8)
         ax.set_xlabel("Page Index within Block (0–63)", fontsize=9.5, labelpad=6)
         ax.set_ylabel("Block Index (0–63)", fontsize=9.5, labelpad=6)
 
-    # Shared legend placed cleanly at the bottom with generous margins
     legend_patches = [
-        mpatches.Patch(color="#F3F4F6", edgecolor="#D1D5DB", label="FREE (Erased, Ready to Program)"),
+        mpatches.Patch(color="#F3F4F6", label="FREE (Erased, Ready to Program)"),
         mpatches.Patch(color="#2563EB", label="VALID (Active Live Data)"),
         mpatches.Patch(color="#DC2626", label="INVALID (Stale Garbage — Triggers GC)"),
     ]
@@ -653,8 +599,6 @@ def fig7_page_state_evolution(workload: List[Tuple[int, bytes]]) -> str:
     fig.suptitle("NAND Flash Physical Page State Evolution — Direct Unbuffered Writes\n"
                  "64 Blocks × 64 Pages = 4,096 Total Physical Silicon Pages (16 MiB)",
                  fontsize=13.5, fontweight="bold", y=0.98)
-
-    # Ensure generous breathing room between subplots and margins
     fig.subplots_adjust(top=0.90, bottom=0.10, hspace=0.35, wspace=0.25)
 
     path = os.path.join(FIGURES_DIR, "fig7_page_state_evolution.png")
@@ -662,10 +606,6 @@ def fig7_page_state_evolution(workload: List[Tuple[int, bytes]]) -> str:
     plt.close(fig)
     return path
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# FIGURE 8: LBA Access Frequency Heatmap
-# ═══════════════════════════════════════════════════════════════════════════════
 
 def fig8_lba_access_heatmap(workload: List[Tuple[int, bytes]]) -> str:
     """Heatmap of per-LBA write frequency with uncrowded stats box."""
@@ -684,7 +624,6 @@ def fig8_lba_access_heatmap(workload: List[Tuple[int, bytes]]) -> str:
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.5),
                                     gridspec_kw={"width_ratios": [1.8, 1.2]})
 
-    # Left: Heatmap
     im = ax1.imshow(grid, cmap="YlOrRd", aspect="auto", interpolation="nearest")
     ax1.set_title(f"Per-LBA Write Frequency Heatmap ({n:,} Addresses)", pad=10)
     ax1.set_xlabel(f"LBA Column (0–{cols - 1})", labelpad=6)
@@ -692,7 +631,6 @@ def fig8_lba_access_heatmap(workload: List[Tuple[int, bytes]]) -> str:
     cbar = fig.colorbar(im, ax=ax1, fraction=0.035, pad=0.04)
     cbar.set_label("Write Count per LBA", fontweight="bold", labelpad=8)
 
-    # Right: Distribution Histogram
     nonzero_freq = freq[freq > 0]
     ax2.hist(nonzero_freq, bins=25, color="#2563EB", alpha=0.75,
              edgecolor="white", linewidth=0.8)
@@ -726,86 +664,36 @@ def fig8_lba_access_heatmap(workload: List[Tuple[int, bytes]]) -> str:
     return path
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# MAIN
-# ═══════════════════════════════════════════════════════════════════════════════
-
 def main() -> None:
-    """Generate all 8 figures and print a summary."""
     os.makedirs(FIGURES_DIR, exist_ok=True)
 
     print("=" * 80)
-    print("     PHASE 5: REGENERATING ALL 8 FIGURES WITH ENHANCED LAYOUT & SPACING")
+    print("            GENERATING EXTENDED RESEARCH VISUALIZATIONS SUITE")
     print("=" * 80)
 
-    print("\n[+] Generating shared 3.2 MB workload (25,000 × 128 B, seed=42)...")
-    workload = generate_workload(num_updates=25000, record_size=128,
-                                 num_lbas=3200, seed=42)
-    print(f"    Workload ready: {len(workload):,} items.")
+    workload = generate_workload(num_updates=25000, record_size=128, num_lbas=3200, seed=42)
 
     generated: List[str] = []
+    figures = [
+        ("Fig 1: WAF vs. Buffer Size", fig1_waf_vs_buffer_size, [workload]),
+        ("Fig 2: Wear Timeline", fig2_erasure_timeline, [workload]),
+        ("Fig 3: GC Overhead Breakdown", fig3_gc_overhead_breakdown, [workload]),
+        ("Fig 4: Working Set Sensitivity", fig4_working_set_sensitivity, []),
+        ("Fig 5: Durability vs. WAF Pareto", fig5_durability_pareto, []),
+        ("Fig 6: Power Loss Box Plot", fig6_power_loss_boxplot, []),
+        ("Fig 7: Page State Evolution", fig7_page_state_evolution, [workload]),
+        ("Fig 8: LBA Access Heatmap", fig8_lba_access_heatmap, [workload]),
+    ]
 
-    # Figure 1
-    print("\n[1/8] Fig 1: WAF vs. Buffer Size curve (categorical x-axis spacing)...")
-    t0 = time.perf_counter()
-    path = fig1_waf_vs_buffer_size(workload)
-    print(f"      ✓ Saved: {path}  ({time.perf_counter() - t0:.1f}s)")
-    generated.append(path)
+    for name, func, args in figures:
+        print(f"[+] Generating {name}...")
+        t0 = time.perf_counter()
+        path = func(*args)
+        print(f"    ✓ Saved: {path} ({time.perf_counter() - t0:.1f}s)")
+        generated.append(path)
 
-    # Figure 2
-    print("\n[2/8] Fig 2: Cumulative block erasure timeline...")
-    t0 = time.perf_counter()
-    path = fig2_erasure_timeline(workload)
-    print(f"      ✓ Saved: {path}  ({time.perf_counter() - t0:.1f}s)")
-    generated.append(path)
-
-    # Figure 3
-    print("\n[3/8] Fig 3: GC overhead breakdown (stacked bar with clearance)...")
-    t0 = time.perf_counter()
-    path = fig3_gc_overhead_breakdown(workload)
-    print(f"      ✓ Saved: {path}  ({time.perf_counter() - t0:.1f}s)")
-    generated.append(path)
-
-    # Figure 4
-    print("\n[4/8] Fig 4: Working set size sensitivity analysis (log x-scale)...")
-    t0 = time.perf_counter()
-    path = fig4_working_set_sensitivity()
-    print(f"      ✓ Saved: {path}  ({time.perf_counter() - t0:.1f}s)")
-    generated.append(path)
-
-    # Figure 5
-    print("\n[5/8] Fig 5: Durability vs. WAF Pareto frontier (cleaned margins)...")
-    t0 = time.perf_counter()
-    path = fig5_durability_pareto()
-    print(f"      ✓ Saved: {path}  ({time.perf_counter() - t0:.1f}s)")
-    generated.append(path)
-
-    # Figure 6
-    print("\n[6/8] Fig 6: Power loss data loss distribution (generous padding)...")
-    t0 = time.perf_counter()
-    path = fig6_power_loss_boxplot()
-    print(f"      ✓ Saved: {path}  ({time.perf_counter() - t0:.1f}s)")
-    generated.append(path)
-
-    # Figure 7
-    print("\n[7/8] Fig 7: Page state evolution snapshots (stats moved to title)...")
-    t0 = time.perf_counter()
-    path = fig7_page_state_evolution(workload)
-    print(f"      ✓ Saved: {path}  ({time.perf_counter() - t0:.1f}s)")
-    generated.append(path)
-
-    # Figure 8
-    print("\n[8/8] Fig 8: LBA access frequency heatmap...")
-    t0 = time.perf_counter()
-    path = fig8_lba_access_heatmap(workload)
-    print(f"      ✓ Saved: {path}  ({time.perf_counter() - t0:.1f}s)")
-    generated.append(path)
-
-    print("\n" + "=" * 80)
-    print("                ALL 8 FIGURES REGENERATED & POLISHED SUCCESSFULLY")
     print("=" * 80)
-    for i, p in enumerate(generated, 1):
-        print(f"    [{i}] {p}")
+    print("                  ALL 8 FIGURES GENERATED SUCCESSFULLY")
     print("=" * 80)
 
 

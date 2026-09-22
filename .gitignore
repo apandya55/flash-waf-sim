@@ -44,7 +44,5 @@ htmlcov/
 # Project experiment outputs / artifacts
 outputs/
 *.png
-!wear_heatmaps.png
 !figures/*.png
 *.svg
-

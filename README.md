@@ -64,7 +64,7 @@ We evaluated 4 buffer policies across 25,000 writes with **50 randomized power-l
 
 ## Analysis & Visualizations
 
-The experiment suite (`visualizations.py`) runs parameter sweeps across buffer sizes, working set sizes, and power loss trials.
+The experiment suite (`experiments/generate_figures.py`) runs parameter sweeps across buffer sizes, working set sizes, and power loss trials.
 
 ### 1. WAF vs. Buffer Size (Diminishing Returns)
 ![WAF vs Buffer Size](figures/fig1_waf_vs_buffer_size.png)
@@ -104,27 +104,56 @@ The experiment suite (`visualizations.py`) runs parameter sweeps across buffer s
 
 Per-block physical erase counts across all 64 blocks under identical color scaling (`vmin=0, vmax=14`):
 
-![Wear Heatmaps](wear_heatmaps.png)
+![Wear Heatmaps](figures/wear_heatmaps.png)
 
 ---
 
-## Architecture
+## Repository Structure
 
-The simulator is structured into four focused components:
+```text
+flash-waf-sim/
+├── flash_sim/                     # Self-contained Python package
+│   ├── __init__.py               # Top-level exports
+│   ├── models.py                 # Page, Block, PageState dataclasses
+│   ├── simulator.py              # FlashSimulator engine (FTL, L2P, Greedy GC)
+│   ├── buffer.py                 # User-space circular RingBuffer
+│   ├── durability.py             # PowerLossSimulator & DurabilityResult
+│   └── workload.py               # Synthetic workload generator
+├── experiments/                  # Research benchmarks & parameter sweeps
+│   ├── benchmark_waf.py          # 3.2 MB WAF benchmark (unbuffered vs. buffered)
+│   ├── durability_eval.py        # Sudden power-loss crash experiments
+│   └── generate_figures.py       # 8-figure publication visualization suite
+├── examples/                     # Interactive educational demos
+│   ├── 01_storage_basics.py      # Page writes, block erasures, and counters
+│   └── 02_garbage_collection.py  # Out-of-place updates & GC victim selection
+├── figures/                      # Generated research charts & heatmaps (9 PNGs)
+│   ├── wear_heatmaps.png         # Per-block silicon wear heatmap
+│   └── fig1 ... fig8             # Analytical figures
+├── tests/                        # Categorical unit test suite (32 tests)
+│   ├── test_models.py            # Storage structures & state invariants
+│   ├── test_allocation_gc.py     # L2P mapping, out-of-place writes & GC
+│   ├── test_buffer.py            # Ring buffer coalescing & flush chunking
+│   └── test_durability.py        # Crash simulation & survived byte tracking
+├── pyproject.toml                # Package configuration & pytest settings
+├── requirements.txt              # Minimal dependencies (numpy, matplotlib)
+└── README.md
+```
 
-* **`flash_sim/models.py`**: State representations (`FREE`, `VALID`, `INVALID`), `Page`, and `Block` dataclasses with erase tracking.
-* **`flash_sim/simulator.py`**: Core `FlashSimulator` engine. Implements Logical-to-Physical (L2P) translation, out-of-place writes, and greedy victim selection GC with wear-leveling tie-breaking.
-* **`flash_sim/buffer.py`**: Circular `RingBuffer` operating in simulated volatile host RAM. Batches small updates into 4 KiB page-aligned flushes.
-* **`flash_sim/durability.py`**: `PowerLossSimulator` harness for injecting randomized power loss events and tracking survived vs. lost host data.
+---
+
+## Architecture & Usage
 
 ```python
-from flash_sim import FlashSimulator, RingBuffer
+from flash_sim import FlashSimulator, RingBuffer, generate_workload
 
 # Initialize 16 MiB flash: 64 blocks x 64 pages x 4 KiB
 sim = FlashSimulator(num_blocks=64, pages_per_block=64, page_size_bytes=4096)
 
 # Attach a 4 KiB volatile ring buffer (32 records of 128 bytes)
 buffer = RingBuffer(flash_sim=sim, capacity_records=32, record_size_bytes=128)
+
+# Generate a synthetic 3.2 MB workload
+workload = generate_workload(num_updates=25000, record_size=128, num_lbas=3200)
 
 # Write records — automatically flushes to flash every 4 KiB
 for lba, record_bytes in workload:
@@ -144,7 +173,7 @@ print(f"Block erasures:       {sim.block_erasures}")
 
 ### Installation
 ```bash
-git clone https://github.com/arnavpandya/flash-waf-sim.git
+git clone https://github.com/apandya55/flash-waf-sim.git
 cd flash-waf-sim
 pip install -r requirements.txt
 ```
@@ -154,19 +183,25 @@ pip install -r requirements.txt
 pytest
 ```
 ```text
-32 passed in 0.20s
+32 passed in 0.23s
 ```
 
-### Run Benchmarks & Visualizations
+### Run Experiments & Generate Figures
 ```bash
-# Phase 3 WAF benchmark (prints comparison table)
-python3 benchmark_phase3.py
+# 3.2 MB WAF benchmark comparison
+python3 experiments/benchmark_waf.py
 
-# Phase 4 Durability experiment & wear heatmaps
-python3 experiment_phase4.py
+# Durability power-loss evaluation & wear heatmaps
+python3 experiments/durability_eval.py
 
-# Phase 5 Full parameter sweep & 8-figure visualization suite
-python3 visualizations.py
+# 8-figure parameter sweep visualization suite
+python3 experiments/generate_figures.py
+```
+
+### Run Educational Examples
+```bash
+python3 examples/01_storage_basics.py
+python3 examples/02_garbage_collection.py
 ```
 
 ---
