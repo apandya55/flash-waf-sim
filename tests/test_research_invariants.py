@@ -4,6 +4,7 @@ import pytest
 
 from flash_sim.models import FlashOutOfSpaceError
 from flash_sim.simulator import FlashSimulator
+from experiments.research_sensitivity import trial
 
 
 def test_page_updates_preserve_latest_data_through_gc() -> None:
@@ -35,3 +36,17 @@ def test_page_state_conservation_and_erase_accounting() -> None:
         sim.check_invariants()
     assert sim.total_free_pages + sim.total_valid_pages + sim.total_invalid_pages == sim.total_pages
     assert sim.block_erasures == sum(block.erase_count for block in sim.blocks)
+
+
+def test_research_trial_keeps_mapped_occupancy_fixed_across_phases() -> None:
+    result = trial(0.40, "uniform", 202601)
+    active = result["configured_active_logical_pages"]
+    assert result["mapped_pages_before_warmup"] == active
+    assert result["mapped_pages_after_warmup"] == active
+    assert result["valid_pages_after_warmup"] == active
+    assert result["mapped_pages_after_measurement"] == active
+    assert result["valid_pages_after_measurement"] == active
+    assert result["host_programs"] == result["measured_updates"] == 5000
+    assert result["total_page_programs"] == (
+        result["host_programs"] + result["gc_copy_programs"]
+    )

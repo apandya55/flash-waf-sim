@@ -10,7 +10,6 @@ Verifies:
 - Comparative Write Amplification Factor (WAF) reduction verification.
 """
 
-import numpy as np
 import pytest
 
 from flash_sim.buffer import RingBuffer
@@ -131,34 +130,17 @@ def test_buffer_clear_power_loss_accounting() -> None:
     assert sim.physical_page_writes == 0  # Nothing was written to flash
 
 
-def test_waf_comparison_mini_workload() -> None:
-    """Verify that ring buffering achieves a dramatic reduction in Write Amplification Factor."""
-    np.random.seed(123)
-    num_updates = 640  # 640 * 128 B = 81,920 host bytes (equivalent to 20 full 4 KiB pages)
-    host_bytes = num_updates * 128
-    page_size = 4096
+def test_ring_buffer_packs_a_full_batch_into_one_page_program() -> None:
+    """Check packing mechanics without comparing different logical workloads."""
+    sim = FlashSimulator(num_blocks=4, pages_per_block=8)
+    buffer = RingBuffer(flash_sim=sim, capacity_records=32,
+                        record_size_bytes=128, page_size_bytes=4096)
 
-    # 1. Unbuffered Run: Every 128-byte write hits flash directly as a full page
-    sim_unbuf = FlashSimulator(num_blocks=64, pages_per_block=64)
-    for i in range(num_updates):
-        lba = int(np.random.randint(0, 100))
-        sim_unbuf.write_logical_page(lba, f"rec_{i}".encode().ljust(128, b"\x00"))
+    for i in range(32):
+        buffer.push(f"record-{i}".encode(), lba=7)
 
-    unbuf_phys_writes = sim_unbuf.physical_page_writes + sim_unbuf.gc_page_copies
-    waf_unbuffered = (unbuf_phys_writes * page_size) / host_bytes
-
-    # 2. Buffered Run: 128-byte writes accumulate in RingBuffer
-    sim_buf = FlashSimulator(num_blocks=64, pages_per_block=64)
-    buffer = RingBuffer(flash_sim=sim_buf, capacity_records=32, record_size_bytes=128)
-    for i in range(num_updates):
-        lba = int(np.random.randint(0, 100))
-        buffer.push(f"rec_{i}".encode().ljust(128, b"\x00"), lba=lba)
-    buffer.flush()
-
-    buf_phys_writes = sim_buf.physical_page_writes + sim_buf.gc_page_copies
-    waf_buffered = (buf_phys_writes * page_size) / host_bytes
-
-    # Unbuffered WAF should be >= 32.0; Buffered WAF should be ~1.0
-    assert waf_unbuffered >= 32.0
-    assert waf_buffered < 2.0
-    assert waf_unbuffered / waf_buffered > 15.0
+    assert buffer.total_flushes == 1
+    assert sim.physical_page_writes == 1
+    assert sim.read_logical_page(7) == b"".join(
+        f"record-{i}".encode().ljust(128, b"\x00") for i in range(32)
+    )
