@@ -126,6 +126,27 @@ class FlashSimulator:
         """
         return self.l2p.get(lba)
 
+    def check_invariants(self) -> None:
+        """Raise ``AssertionError`` if physical page states and the L2P map disagree.
+
+        This checks simulator bookkeeping only; it does not model NAND electrical
+        behavior or power-loss recovery.
+        """
+        assert self.total_free_pages + self.total_valid_pages + self.total_invalid_pages == self.total_pages
+        mapped_locations = set(self.l2p.values())
+        assert len(mapped_locations) == len(self.l2p), "multiple LBAs map to one physical page"
+        for lba, (block_idx, page_idx) in self.l2p.items():
+            page = self.get_page(block_idx, page_idx)
+            assert page.is_valid and page.lba == lba, f"stale L2P entry for LBA {lba}"
+        for block in self.blocks:
+            for page_idx, page in enumerate(block.pages):
+                coord = (block.block_id, page_idx)
+                if page.is_valid:
+                    assert page.lba is not None and self.l2p.get(page.lba) == coord
+                elif page.is_free:
+                    assert page.lba is None and page.data is None
+        assert self.block_erasures == sum(block.erase_count for block in self.blocks)
+
     def _allocate_free_page(self, exclude_block_idx: Optional[int] = None) -> Tuple[int, int]:
         """Find and allocate the next free physical page.
         
