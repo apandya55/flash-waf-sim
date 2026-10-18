@@ -1,0 +1,56 @@
+[
+  {
+    "utilization": 0.4,
+    "locality": "uniform",
+    "n": 5,
+    "mean_amplification": 1.1320000000000001,
+    "sd_amplification": 0.002267156809750922,
+    "mean_gc_copies": 660.0,
+    "mean_erasures": 162.4
+  },
+  {
+    "utilization": 0.4,
+    "locality": "hot_cold",
+    "n": 5,
+    "mean_amplification": 1.33792,
+    "sd_amplification": 0.01625706000481016,
+    "mean_gc_copies": 1689.6,
+    "mean_erasures": 194.2
+  },
+  {
+    "utilization": 0.7,
+    "locality": "uniform",
+    "n": 5,
+    "mean_amplification": 1.9884799999999998,
+    "sd_amplification": 0.01347709167439327,
+    "mean_gc_copies": 4942.4,
+    "mean_erasures": 299.4
+  },
+  {
+    "utilization": 0.7,
+    "locality": "hot_cold",
+    "n": 5,
+    "mean_amplification": 1.8213599999999999,
+    "sd_amplification": 0.07261038493218441,
+    "mean_gc_copies": 4106.8,
+    "mean_erasures": 270.4
+  },
+  {
+    "utilization": 0.85,
+    "locality": "uniform",
+    "n": 5,
+    "mean_amplification": 4.1059600000000005,
+    "sd_amplification": 0.06703885440548625,
+    "mean_gc_copies": 15529.8,
+    "mean_erasures": 633.0
+  },
+  {
+    "utilization": 0.85,
+    "locality": "hot_cold",
+    "n": 5,
+    "mean_amplification": 2.17152,
+    "sd_amplification": 0.17884683950240782,
+    "mean_gc_copies": 5857.6,
+    "mean_erasures": 325.2
+  }
+]
