@@ -1,0 +1,69 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{url}
+\title{A Seeded Sensitivity Study of Utilization and Locality in a Simplified Page-Mapped Flash Simulator}
+\author{Arnav Pandya}
+\date{October 2026}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We report a reproducible sensitivity study of a small page-mapped flash translation layer (FTL) simulator. Across 30 seeded trials, we varied active logical-page utilization (40\%, 70\%, 85\%) and update locality (uniform or an 80\% hot-set-biased mixture), holding device geometry and run length fixed. The measured quantity is modeled page-program amplification: host page programs plus garbage-collection (GC) copy programs, divided by host page programs. Mean amplification rose from 1.132 to 4.106 for uniform workloads as utilization increased from 40\% to 85\%. Under the hot/cold mixture, means were 1.338, 1.821, and 2.172. The reversal in the relative locality effect at higher utilization is specific to this greedy allocator and synthetic workload. This is a software sensitivity result, not a novel FTL algorithm, a hardware measurement, or an SSD lifetime prediction. We also document and withdraw a previously reported record-buffer comparison whose paths did not preserve equivalent logical state.
+\end{abstract}
+
+\section{Introduction}
+Flash translation layers map host logical addresses to physical NAND pages and reclaim invalid pages through garbage collection. Page relocation and erase-block reclamation make write amplification dependent on workload and device policy. Prior work has analyzed this dependence in flash-based SSDs \cite{hu2009waf,agrawal2008design}. This paper evaluates only a compact educational model and asks: how do active logical-page utilization and update locality affect modeled program amplification and GC work under equal full-page overwrite semantics?
+
+\section{Related Work}
+Hu et al. analyze write amplification in flash-based SSDs and relate it to workload and system design \cite{hu2009waf}. Agrawal et al. describe design trade-offs in flash-based SSD architectures, including mapping and garbage collection \cite{agrawal2008design}. These works establish that the general topic is not novel. Our contribution is a limited, reproducible sensitivity artifact with corrected measurement boundaries and explicit software limitations; we do not claim new general knowledge about commercial devices.
+
+\section{Simulation Architecture}
+The simulator represents each physical page as free, valid, or invalid; logical-to-physical mappings reside in an in-memory dictionary. A host write programs one free physical page and invalidates a prior page for that LBA. When free pages approach the configured threshold, greedy GC chooses a block with many invalid pages, copies its remaining valid pages, and erases it. Ties favor a smaller erase count. The model excludes persistent mapping metadata, NAND timing, parallelism, bad blocks, ECC, failures, and static wear leveling. The supplied ring buffer packs record bytes but discards record LBAs; therefore it cannot be compared as an equivalent key-value store to direct writes.
+
+\section{Experimental Methodology}
+We used 16 blocks of 32 pages each (512 physical pages), a modeled page size of 4,096 bytes, and 5,000 full-page host overwrites per trial. Active address spaces were rounded to 40\%, 70\%, and 85\% of physical-page count. Uniform trials sampled each active LBA uniformly. Hot/cold trials directed 80\% of updates to a hot set equal to 10\% of the active range and 20\% to a uniform draw over the full active range. We used five paired seeds (11, 23, 47, 89, 101), yielding 30 trials. The hot and uniform components can overlap; this is a hot-biased mixture rather than disjoint hot/cold populations.
+
+Let $H$ be host page programs and $G$ be valid-page GC copy programs. We report $A=(H+G)/H$, in modeled page-programs per host page-program. This excludes metadata and any internal device work. We also record erasures and per-block erase counts. Results combine startup and GC activity; run lengths were fixed and were not selected by a steady-state criterion. Means and sample standard deviations describe variation across five seeds.
+
+\section{Results}
+Table~\ref{tab:results} reports the trial means and standard deviations. Uniform workload amplification increased with utilization. Hot-set-biased workload amplification was higher at 40\%, but lower at 70\% and 85\% than the uniform case. The pattern indicates an interaction with the chosen allocator, victim score, and address distribution; it should not be generalized to real SSDs.
+
+\begin{table}[ht]
+\centering
+\caption{Program amplification, mean $\pm$ sample SD across five seeds.}
+\label{tab:results}
+\begin{tabular}{@{}lrr@{}}\toprule
+Utilization & Uniform & Hot/cold mixture \\\midrule
+40\% & 1.132 $\pm$ 0.002 & 1.338 $\pm$ 0.016 \\
+70\% & 1.988 $\pm$ 0.013 & 1.821 $\pm$ 0.073 \\
+85\% & 4.106 $\pm$ 0.067 & 2.172 $\pm$ 0.179 \\\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.82\linewidth]{../research/figures/program_amplification.png}
+\caption{Modeled program amplification by active logical-page utilization. Error bars show one sample standard deviation across five seeds.}
+\end{figure}
+
+\section{Discussion}
+The strong increase for uniform traffic at high utilization is consistent with less spare capacity making reclamation more expensive in this model. The differing hot/cold trend demonstrates that locality interacts with greedy victim selection and allocation order. The low SD across seeds for some cells does not establish robustness to other workload definitions, run lengths, device geometries, or FTL algorithms. The measured ratio is not conventional device WAF validated against hardware; it is an explicitly bounded page-program ratio within this simulator.
+
+\section{Limitations}
+The simulator is a small abstraction, not a NAND model. It uses an in-memory mapping table and omits persistent recovery, controller caches, metadata writes, wear-leveling migration, timing, parallel channels, bad blocks, endurance failures, and hardware validation. Only six parameter cells, five seeds, and one run length were studied. The hot/cold mixture is not a canonical benchmark. Erase counts are simulated GC operations, not lifetime estimates. A previous 66-fold buffered/direct comparison is withdrawn because the buffered path did not preserve the same logical key-value state. Crash-loss outputs are queue occupancy accounting, not recovered-state durability results.
+
+\section{Conclusion}
+In this simplified page-mapped simulator, utilization and locality jointly affected modeled GC program amplification, with the locality ordering changing across utilization levels. The result is an educational, reproducible sensitivity study and corrected research-software artifact. It does not establish a general buffering benefit, a novel FTL technique, or predictions about commercial flash devices.
+
+\section*{Code and Data Availability}
+Source code, tests, experiment configuration, raw seeded trial outputs, and figure-generation scripts are available in the project repository at \url{https://github.com/apandya55/flash-waf-sim}. No archival DOI has been created. Reproduction commands are in \texttt{research/METHODOLOGY.md}.
+
+\section*{AI Use Disclosure}
+AI tools assisted with repository auditing, code editing, experiment scripting, and manuscript drafting. The author must verify all code, results, citations, and venue policies and revise this disclosure to match the target journal's current requirements.
+
+\bibliographystyle{plain}
+\bibliography{references}
+\end{document}
