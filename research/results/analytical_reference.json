@@ -1,0 +1,26 @@
+{
+  "reference": {
+    "citation": "Agarwal and Marrow, A Closed-Form Expression for Write Amplification in NAND Flash, IEEE GLOBECOM Workshops, 2010, DOI: 10.1109/GLOCOMW.2010.5700261",
+    "scope": "Analytical write-amplification model for uniformly distributed random writes with greedy garbage collection; the paper studies over-provisioning effects.",
+    "metadata_check": "DOI, title, authors, venue, and year matched Crossref metadata; abstract scope checked via OpenAlex."
+  },
+  "comparison": [
+    {
+      "utilization": 0.4,
+      "simulator_mean_waf": 1.1525199999999998,
+      "n_seed_blocks": 30
+    },
+    {
+      "utilization": 0.7,
+      "simulator_mean_waf": 2.1698399999999998,
+      "n_seed_blocks": 30
+    },
+    {
+      "utilization": 0.85,
+      "simulator_mean_waf": 5.061773333333334,
+      "n_seed_blocks": 30
+    }
+  ],
+  "observed_direction": "increasing",
+  "interpretation": "The simulator's uniform-workload mean WAF rises at all three occupancy levels, consistent with the direction of the published model's over-provisioning analysis. This is a qualitative consistency check only. It does not reproduce or numerically validate the paper's analytical expression; the finite-run simulator has different allocation, GC-trigger, and warm-up details, and its full text should be checked by the author before journal submission."
+}
