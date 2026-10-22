@@ -1,0 +1,246 @@
+{
+  "purpose": "bounded sensitivity analysis, not a confirmatory significance test",
+  "seed_blocks": 10,
+  "cell_summaries": [
+    {
+      "geometry_blocks": 16,
+      "pages_per_block": 32,
+      "warmup_updates": 0,
+      "workload": "hot_cold_80_10",
+      "n_seed_blocks": 10,
+      "mean_program_amplification": 2.64968,
+      "sd_across_seed_blocks": 0.01621362938326207,
+      "min": 2.63,
+      "max": 2.6804
+    },
+    {
+      "geometry_blocks": 16,
+      "pages_per_block": 32,
+      "warmup_updates": 0,
+      "workload": "uniform",
+      "n_seed_blocks": 10,
+      "mean_program_amplification": 2.1456,
+      "sd_across_seed_blocks": 0.008835785823066997,
+      "min": 2.1328,
+      "max": 2.16
+    },
+    {
+      "geometry_blocks": 16,
+      "pages_per_block": 32,
+      "warmup_updates": 2500,
+      "workload": "hot_cold_80_10",
+      "n_seed_blocks": 10,
+      "mean_program_amplification": 2.7727399999999998,
+      "sd_across_seed_blocks": 0.006901239824199027,
+      "min": 2.7646,
+      "max": 2.7828
+    },
+    {
+      "geometry_blocks": 16,
+      "pages_per_block": 32,
+      "warmup_updates": 2500,
+      "workload": "uniform",
+      "n_seed_blocks": 10,
+      "mean_program_amplification": 2.16788,
+      "sd_across_seed_blocks": 0.017931771927069726,
+      "min": 2.1368,
+      "max": 2.1946
+    },
+    {
+      "geometry_blocks": 16,
+      "pages_per_block": 32,
+      "warmup_updates": 5000,
+      "workload": "hot_cold_80_10",
+      "n_seed_blocks": 10,
+      "mean_program_amplification": 2.76836,
+      "sd_across_seed_blocks": 0.013448766981895866,
+      "min": 2.7484,
+      "max": 2.7836
+    },
+    {
+      "geometry_blocks": 16,
+      "pages_per_block": 32,
+      "warmup_updates": 5000,
+      "workload": "hot_cold_90_05",
+      "n_seed_blocks": 10,
+      "mean_program_amplification": 3.17182,
+      "sd_across_seed_blocks": 0.019804477608190867,
+      "min": 3.1444,
+      "max": 3.201
+    },
+    {
+      "geometry_blocks": 16,
+      "pages_per_block": 32,
+      "warmup_updates": 5000,
+      "workload": "uniform",
+      "n_seed_blocks": 10,
+      "mean_program_amplification": 2.16768,
+      "sd_across_seed_blocks": 0.014838748075375,
+      "min": 2.141,
+      "max": 2.1856
+    },
+    {
+      "geometry_blocks": 16,
+      "pages_per_block": 32,
+      "warmup_updates": 5000,
+      "workload": "zipf_1_2",
+      "n_seed_blocks": 10,
+      "mean_program_amplification": 2.9472199999999997,
+      "sd_across_seed_blocks": 0.016983246646818353,
+      "min": 2.9248,
+      "max": 2.9732
+    },
+    {
+      "geometry_blocks": 16,
+      "pages_per_block": 32,
+      "warmup_updates": 10000,
+      "workload": "hot_cold_80_10",
+      "n_seed_blocks": 10,
+      "mean_program_amplification": 2.77568,
+      "sd_across_seed_blocks": 0.01809658040134163,
+      "min": 2.7482,
+      "max": 2.8022
+    },
+    {
+      "geometry_blocks": 16,
+      "pages_per_block": 32,
+      "warmup_updates": 10000,
+      "workload": "uniform",
+      "n_seed_blocks": 10,
+      "mean_program_amplification": 2.17188,
+      "sd_across_seed_blocks": 0.012532695019206577,
+      "min": 2.1536,
+      "max": 2.1922
+    },
+    {
+      "geometry_blocks": 32,
+      "pages_per_block": 32,
+      "warmup_updates": 5000,
+      "workload": "hot_cold_80_10",
+      "n_seed_blocks": 10,
+      "mean_program_amplification": 2.54206,
+      "sd_across_seed_blocks": 0.014386119853679975,
+      "min": 2.5196,
+      "max": 2.5614
+    },
+    {
+      "geometry_blocks": 32,
+      "pages_per_block": 32,
+      "warmup_updates": 5000,
+      "workload": "uniform",
+      "n_seed_blocks": 10,
+      "mean_program_amplification": 1.96828,
+      "sd_across_seed_blocks": 0.015532675236416906,
+      "min": 1.9532,
+      "max": 1.9942
+    }
+  ],
+  "paired_sensitivity_contrasts": [
+    {
+      "geometry": "16x32",
+      "warmup_updates": 5000,
+      "contrast": "hot_cold_80_10_minus_uniform",
+      "n_paired_seed_blocks": 10,
+      "mean_paired_difference": 0.60068,
+      "sd_paired_difference": 0.015375362687682442,
+      "df": 9,
+      "ci95_paired_t": [
+        0.5896811281198409,
+        0.6116788718801591
+      ],
+      "min_paired_difference": 0.5724,
+      "max_paired_difference": 0.6246
+    },
+    {
+      "geometry": "16x32",
+      "warmup_updates": 5000,
+      "contrast": "hot_cold_90_05_minus_uniform",
+      "n_paired_seed_blocks": 10,
+      "mean_paired_difference": 1.00414,
+      "sd_paired_difference": 0.022176874842451972,
+      "df": 9,
+      "ci95_paired_t": [
+        0.9882756194290061,
+        1.020004380570994
+      ],
+      "min_paired_difference": 0.9649999999999999,
+      "max_paired_difference": 1.0364
+    },
+    {
+      "geometry": "16x32",
+      "warmup_updates": 5000,
+      "contrast": "zipf_1_2_minus_uniform",
+      "n_paired_seed_blocks": 10,
+      "mean_paired_difference": 0.7795399999999999,
+      "sd_paired_difference": 0.02472031103723768,
+      "df": 9,
+      "ci95_paired_t": [
+        0.7618561547822164,
+        0.7972238452177834
+      ],
+      "min_paired_difference": 0.7402000000000002,
+      "max_paired_difference": 0.8191999999999999
+    },
+    {
+      "geometry": "32x32",
+      "warmup_updates": 5000,
+      "contrast": "hot_cold_80_10_minus_uniform",
+      "n_paired_seed_blocks": 10,
+      "mean_paired_difference": 0.57378,
+      "sd_paired_difference": 0.018625060775441453,
+      "df": 9,
+      "ci95_paired_t": [
+        0.5604564341505015,
+        0.5871035658494984
+      ],
+      "min_paired_difference": 0.5324,
+      "max_paired_difference": 0.5999999999999999
+    },
+    {
+      "geometry": "16x32",
+      "warmup_updates": 0,
+      "contrast": "hot_cold_80_10_minus_uniform",
+      "n_paired_seed_blocks": 10,
+      "mean_paired_difference": 0.50408,
+      "sd_paired_difference": 0.017580342557653613,
+      "df": 9,
+      "ci95_paired_t": [
+        0.49150378054237054,
+        0.5166562194576294
+      ],
+      "min_paired_difference": 0.476,
+      "max_paired_difference": 0.5308000000000002
+    },
+    {
+      "geometry": "16x32",
+      "warmup_updates": 2500,
+      "contrast": "hot_cold_80_10_minus_uniform",
+      "n_paired_seed_blocks": 10,
+      "mean_paired_difference": 0.60486,
+      "sd_paired_difference": 0.019077863845013886,
+      "df": 9,
+      "ci95_paired_t": [
+        0.5912125183476464,
+        0.6185074816523535
+      ],
+      "min_paired_difference": 0.5787999999999998,
+      "max_paired_difference": 0.6349999999999998
+    },
+    {
+      "geometry": "16x32",
+      "warmup_updates": 10000,
+      "contrast": "hot_cold_80_10_minus_uniform",
+      "n_paired_seed_blocks": 10,
+      "mean_paired_difference": 0.6038000000000001,
+      "sd_paired_difference": 0.019774956103336634,
+      "df": 9,
+      "ci95_paired_t": [
+        0.5896538485865693,
+        0.6179461514134309
+      ],
+      "min_paired_difference": 0.5758000000000001,
+      "max_paired_difference": 0.6384000000000003
+    }
+  ],
+  "interpretation": "Descriptive sensitivity checks at 70% occupancy. Paired t intervals use df=9 and describe seed-block variation for each fixed simulator condition; they are not population intervals. One design factor varies at a time where applicable."
+}

@@ -1,0 +1,3 @@
+# Baseline experiment archive
+
+These files preserve the original start-empty experiment before the controlled occupancy and warm-up redesign. The baseline used five paired seed blocks (11, 23, 47, 89, 101), 5,000 updates per run, and no prepopulation or separate warm-up. Its 30 condition runs are not 30 independent replications. The original paired hot/cold-minus-uniform contrasts were +0.19936 at 40%, -0.13604 at 70%, and -1.78292 at 85% utilization, each with descriptive paired Student-t intervals at df=4. These results are retained for comparison and must not be merged with the revised experiment.

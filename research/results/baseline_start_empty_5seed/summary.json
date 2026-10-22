@@ -1,0 +1,151 @@
+{
+  "cell_summaries": [
+    {
+      "utilization": 0.4,
+      "locality": "uniform",
+      "n": 5,
+      "mean_amplification": 1.13628,
+      "sd_amplification": 0.003183080269173221,
+      "mean_gc_copies": 681.4,
+      "mean_erasures": 163.0
+    },
+    {
+      "utilization": 0.4,
+      "locality": "hot_cold",
+      "n": 5,
+      "mean_amplification": 1.3356400000000002,
+      "sd_amplification": 0.012502319784743962,
+      "mean_gc_copies": 1678.2,
+      "mean_erasures": 194.0
+    },
+    {
+      "utilization": 0.7,
+      "locality": "uniform",
+      "n": 5,
+      "mean_amplification": 1.9712400000000003,
+      "sd_amplification": 0.01585017350062772,
+      "mean_gc_copies": 4856.2,
+      "mean_erasures": 296.8
+    },
+    {
+      "utilization": 0.7,
+      "locality": "hot_cold",
+      "n": 5,
+      "mean_amplification": 1.8352,
+      "sd_amplification": 0.011111255554616664,
+      "mean_gc_copies": 4176.0,
+      "mean_erasures": 272.6
+    },
+    {
+      "utilization": 0.85,
+      "locality": "uniform",
+      "n": 5,
+      "mean_amplification": 4.02696,
+      "sd_amplification": 0.05762766696648409,
+      "mean_gc_copies": 15134.8,
+      "mean_erasures": 620.6
+    },
+    {
+      "utilization": 0.85,
+      "locality": "hot_cold",
+      "n": 5,
+      "mean_amplification": 2.24404,
+      "sd_amplification": 0.04107417680246308,
+      "mean_gc_copies": 6220.2,
+      "mean_erasures": 336.6
+    }
+  ],
+  "paired_locality_effects": [
+    {
+      "utilization": 0.4,
+      "contrast": "hot_cold_minus_uniform",
+      "paired_differences_by_seed": [
+        0.21619999999999995,
+        0.19940000000000002,
+        0.20100000000000007,
+        0.19140000000000001,
+        0.18879999999999986
+      ],
+      "n": 5,
+      "mean": 0.19935999999999998,
+      "sd": 0.010737224967374033,
+      "ci95_t_df4": [
+        0.18602797431739704,
+        0.21269202568260293
+      ]
+    },
+    {
+      "utilization": 0.7,
+      "contrast": "hot_cold_minus_uniform",
+      "paired_differences_by_seed": [
+        -0.12880000000000003,
+        -0.11560000000000015,
+        -0.14100000000000001,
+        -0.14800000000000013,
+        -0.14680000000000004
+      ],
+      "n": 5,
+      "mean": -0.13604000000000008,
+      "sd": 0.01372617936645152,
+      "ci95_t_df4": [
+        -0.15308330275221033,
+        -0.11899669724778984
+      ]
+    },
+    {
+      "utilization": 0.85,
+      "contrast": "hot_cold_minus_uniform",
+      "paired_differences_by_seed": [
+        -1.7357999999999998,
+        -1.6869999999999998,
+        -1.8276,
+        -1.823,
+        -1.8411999999999997
+      ],
+      "n": 5,
+      "mean": -1.78292,
+      "sd": 0.06786053344912639,
+      "ci95_t_df4": [
+        -1.8671799812826828,
+        -1.6986600187173173
+      ]
+    }
+  ],
+  "interaction_contrasts": [
+    {
+      "comparison": "70%_minus_40%_locality_effect",
+      "paired_differences_by_seed": [
+        -0.345,
+        -0.31500000000000017,
+        -0.3420000000000001,
+        -0.33940000000000015,
+        -0.3355999999999999
+      ],
+      "n": 5,
+      "mean_difference_in_differences": -0.33540000000000003,
+      "sd": 0.011915536076903915,
+      "ci95_t_df4": [
+        -0.35019509216598976,
+        -0.3206049078340103
+      ]
+    },
+    {
+      "comparison": "85%_minus_40%_locality_effect",
+      "paired_differences_by_seed": [
+        -1.9519999999999997,
+        -1.8863999999999999,
+        -2.0286,
+        -2.0144,
+        -2.0299999999999994
+      ],
+      "n": 5,
+      "mean_difference_in_differences": -1.9822799999999998,
+      "sd": 0.062378457819987805,
+      "ci95_t_df4": [
+        -2.059733085338551,
+        -1.9048269146614487
+      ]
+    }
+  ],
+  "interval_note": "Descriptive paired t intervals across five fixed simulation seeds; not hardware or population inference."
+}
