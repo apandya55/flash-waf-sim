@@ -4,66 +4,89 @@
 \usepackage{booktabs}
 \usepackage{amsmath}
 \usepackage{url}
-\title{A Seeded Sensitivity Study of Utilization and Locality in a Simplified Page-Mapped Flash Simulator}
+\usepackage{needspace}
+\title{Utilization and Locality in a Prepopulated Greedy Page-Mapped Flash Simulator}
 \author{Arnav Pandya}
 \date{October 2026}
 \begin{document}
 \maketitle
 
 \begin{abstract}
-We measured page-program amplification in a small page-mapped flash translation layer simulator at three active logical-page utilizations (40\%, 70\%, 85\%) and under uniform or disjoint hot/cold update distributions. Across five matched pseudorandom seed blocks (30 condition runs), mean amplification for uniform traffic rose from 1.136 to 4.027 as utilization increased. For hot/cold traffic, means were 1.336, 1.835, and 2.244. The paired hot/cold-minus-uniform differences were +0.199 (95\% descriptive interval 0.186 to 0.213), -0.136 (-0.153 to -0.119), and -1.783 (-1.867 to -1.699), respectively. The interaction characterizes this allocator and synthetic workload; it is not a general property of NAND devices. The study provides a reproducible software sensitivity result, not a new FTL algorithm, hardware measurement, or SSD lifetime prediction.\\
-\textbf{Keywords:} flash translation layer, write amplification, garbage collection, workload locality, simulation
+We measured page-program amplification in a simplified page-mapped flash translation layer simulator at 40\%, 70\%, and 85\% mapped-page occupancy. Each run prepopulated all active logical addresses, applied 5,000 warm-up updates, and measured the next 5,000 updates. Thirty paired pseudorandom seed blocks covered six occupancy-by-workload conditions, for 180 condition runs. The paired hot/cold-minus-uniform differences were +0.32987 at 40\% occupancy (95\% descriptive paired Student-$t$ interval [0.32665, 0.33310]), +0.60656 at 70\% ([0.60054, 0.61258]), and +0.80465 at 85\% ([0.78676, 0.82253]); all intervals use $df=29$. The sign reversal reported in the separate start-empty baseline did not appear under this protocol. These results characterize one simulator and synthetic workload design, not physical NAND devices.
 \end{abstract}
 
 \section{Introduction}
-Flash translation layers map host logical addresses to physical NAND pages and reclaim invalid pages through garbage collection. Page relocation and erase-block reclamation make write amplification dependent on workload and device policy. Prior work has analyzed greedy collection, valid-page distributions, closed-form amplification, hot/cold policies, and locality-aware FTLs \cite{hu2009waf,agrawal2008design,bux2010greedy,peleato2012valid,agarwal2010closed,vanhoudt2013hotcold,chen2019hcftl,wang2015datacentric,kang2015hotpages,park2019model}. This paper evaluates only a compact educational model and asks: how do active logical-page utilization and update locality affect modeled program amplification and GC work under equal full-page overwrite semantics?
+Flash translation layers map host logical addresses to physical NAND pages. Garbage collection moves valid pages out of blocks that contain invalid pages, then erases those blocks. The copying work contributes to write amplification, and its amount depends on the workload and collection policy. Prior studies analyze write amplification, greedy collection, valid-page distributions, and hot/cold or locality-aware FTL policies \cite{hu2009waf,agrawal2008design,bux2010greedy,peleato2012valid,agarwal2010closed,vanhoudt2013hotcold,chen2019hcftl,wang2015datacentric,kang2015hotpages,park2019model}. We use a compact software model to characterize program amplification under two synthetic full-page overwrite distributions at equal mapped-page occupancy.
 
-\section{Related Work}
-Hu et al. analyze write amplification in flash-based SSDs, while Agrawal et al. describe mapping and garbage-collection trade-offs \cite{hu2009waf,agrawal2008design}. Bux and Iliadis analyze greedy collection performance, Peleato et al. characterize valid-page distributions under greedy GC, and Agarwal and Marrow derive a closed-form NAND amplification expression \cite{bux2010greedy,peleato2012valid,agarwal2010closed}. Research has also directly studied hot/cold data and garbage-collection algorithms, locality-aware page-level FTLs, data-centric collection, and policies based on hot-page ratios \cite{vanhoudt2013hotcold,chen2019hcftl,wang2015datacentric,kang2015hotpages}. Park et al. provide another write-amplification model \cite{park2019model}. Thus the broad premise that workload locality and utilization interact with garbage collection is established. The present result does not establish that its particular sign change is new: it is best treated as a reproducible characterization of this simulator under one synthetic workload design, not as an independent storage-systems principle.
+\section{Related work}
+Hu et al. analyze write amplification in flash-based SSDs, while Agrawal et al. describe mapping and garbage-collection trade-offs \cite{hu2009waf,agrawal2008design}. Bux and Iliadis analyze greedy collection. Peleato et al. characterize valid-page distributions under greedy GC, and Agarwal and Marrow derive a closed-form NAND amplification expression \cite{bux2010greedy,peleato2012valid,agarwal2010closed}. Other studies examine hot/cold data, locality-aware page-level FTLs, data-centric collection, and policies based on hot-page ratios \cite{vanhoudt2013hotcold,chen2019hcftl,wang2015datacentric,kang2015hotpages}. Park et al. present another write-amplification model \cite{park2019model}. This study contributes a reproducible observation about this implementation and workload construction. It does not establish a general utilization-locality law.
 
-\section{Simulation Architecture}
-The simulator represents each physical page as free, valid, or invalid; logical-to-physical mappings reside in an in-memory dictionary. A host write programs one free physical page and invalidates a prior page for that LBA. When free pages approach the configured threshold, greedy GC chooses a block with many invalid pages, copies its remaining valid pages, and erases it. Ties favor a smaller erase count. The model excludes persistent mapping metadata, NAND timing, parallelism, bad blocks, ECC, failures, and static wear leveling. The supplied ring buffer packs record bytes but discards record LBAs; therefore it cannot be compared as an equivalent key-value store to direct writes.
+\section{Simulation model}
+The simulator represents each physical page as free, valid, or invalid. An in-memory dictionary stores logical-to-physical mappings. A host write programs one free physical page and invalidates the previous page for that logical address. When free pages reach the configured threshold, greedy garbage collection selects a block with the most invalid pages, copies its remaining valid pages, and erases it. Ties favor the block with the smaller erase count. Page allocation prefers the current block and otherwise selects a block with the most free pages. The model excludes persistent mapping metadata, NAND timing, parallel channels, bad blocks, ECC, static wear leveling, failures, and controller behavior.
 
-\section{Experimental Methodology}
-We used 16 blocks of 32 pages each (512 physical pages), a modeled page size of 4,096 bytes, and 5,000 full-page host overwrites per run. Active address spaces were rounded to 40\%, 70\%, and 85\% of physical-page count. Uniform runs sampled each active LBA uniformly. Hot/cold runs directed 80\% of updates to a hot range containing 10\% of active addresses and 20\% to a disjoint cold range containing the remainder. Five pseudorandom seeds (11, 23, 47, 89, 101) were reused across all six conditions, giving 30 condition runs arranged in five paired seed blocks. The generator uses common random numbers: latent draws are aligned by seed across conditions, while workload transformations and address sequences differ by condition. The five seed streams are the independent replication units for paired contrasts; the 30 condition runs are not 30 independent replicates of the interaction.
+\section{Experimental method}
+We modeled 16 blocks of 32 pages each, for 512 physical pages, with 4,096-byte pages and a GC threshold of 32 free pages. Active logical address counts were 205, 358, and 435 pages, representing 40\%, 70\%, and 85\% of physical capacity after rounding. Each condition began by writing every active LBA once in ascending order. This set the mapped and valid page counts to the active-page count before traffic.
 
-Let $H$ be host page programs and $G$ be valid-page GC copy programs. We report $A=(H+G)/H$, in modeled page-programs per host page-program. This excludes metadata and any internal device work. We also record erasures and per-block erase counts. Results combine startup and GC activity; run lengths were fixed and were not selected by a steady-state criterion. Cell means and sample standard deviations summarize the five seeds. We calculated paired hot/cold-minus-uniform differences within each seed and difference-in-differences across utilization levels; two-sided 95\% Student-$t$ intervals use four degrees of freedom. They describe between-seed variation for these fixed simulated conditions and are not population intervals for drives or real workloads.
+Each of 30 seed blocks ran all six occupancy-by-workload conditions, for 180 runs total. We used NumPy's \texttt{default\_rng} with seeds 202601 through 202630. For a given seed, all conditions used the same three latent uniform random arrays. Uniform traffic sampled the active range uniformly. Hot/cold traffic directed 80\% of updates to a hot set containing 10\% of active addresses and 20\% to the disjoint cold remainder. The address sequences differ between conditions because the latent draws are transformed according to each workload distribution. Seed blocks are the independent replication units for paired contrasts.
+
+Each run applied 5,000 warm-up updates and then 5,000 measured updates. The simulator checked its mapping and page-state invariants after warm-up and measurement. Mapped and valid page counts remained equal to the configured active-page count in all runs. Measurement counters were computed as differences from the counters at the warm-up boundary. Thus the reported outcome excludes warm-up host programs, GC copies, and erasures. The fixed warm-up defines the experiment; we did not test whether the simulator had converged to steady state.
+
+Let $H$ be the measured host page programs and $G$ the measured valid-page GC copy programs. Program amplification is $(H+G)/H$, in modeled physical page programs per host page program. It excludes metadata and other device work. We computed hot/cold-minus-uniform differences within each seed block and differences-in-differences between occupancy levels. Two-sided descriptive 95\% paired Student-$t$ intervals use $df=29$. They describe variation among the 30 pseudorandom seed blocks under the fixed model and workload generator. They do not support inference about real devices or a population of workloads.
 
 \section{Results}
-Table~\ref{tab:results} reports the trial means and standard deviations. Uniform workload amplification increased with utilization. Hot/cold amplification was higher at 40\%, but lower at 70\% and 85\%. Paired hot/cold-minus-uniform contrasts were $+0.199$ (40\%, 95\% descriptive $t_4$ interval $[0.186,0.213]$), $-0.136$ (70\%, $[-0.153,-0.119]$), and $-1.783$ (85\%, $[-1.867,-1.699]$). Difference-in-differences relative to 40\% were $-0.335$ ($[-0.350,-0.321]$) at 70\% and $-1.982$ ($[-2.060,-1.905]$) at 85\%. These estimates use five paired seed blocks; the intervals do not turn the six cells or 30 condition runs into independent interaction replications. Nor do they support inference to a population of devices or workloads. The pattern is conditional on this allocator, victim score, workload generator, and run length.
+Table~\ref{tab:results} reports cell means and sample standard deviations. Hot/cold measured amplification exceeded uniform amplification at each occupancy. Paired hot/cold-minus-uniform differences were +0.32987 at 40\% (95\% interval [0.32665, 0.33310]), +0.60656 at 70\% ([0.60054, 0.61258]), and +0.80465 at 85\% ([0.78676, 0.82253]). The differences-in-differences relative to 40\% were +0.27669 at 70\% ([0.27049, 0.28289]) and +0.47477 at 85\% ([0.45711, 0.49244]). All intervals have $df=29$. The paired contrast increased across the three tested occupancy conditions in this simulator.
+
+The earlier start-empty experiment is archived separately in the directory \url{research/results/baseline_start_empty_5seed/}. It reported positive hot/cold-minus-uniform amplification at 40\% and negative contrasts at 70\% and 85\%. Under the revised prepopulation, warm-up, and measured-phase protocol, that sign reversal did not recur. The studies differ in initial state, phase definition, and number of seed blocks, so their numerical estimates are not pooled.
+
+\subsection{Sensitivity to workload, geometry, and warm-up}
+At 70\% occupancy, we ran a separate one-factor-at-a-time sensitivity grid with ten paired seed blocks per condition and 5,000 measured updates. The hot/cold 80/10-minus-uniform contrast was +0.60068 (95\% paired Student-$t$ interval [0.58968, 0.61168], $df=9$) in the base 16-by-32 geometry after 5,000 warm-up updates. Across warm-up lengths of 0, 2,500, 5,000, and 10,000 updates, the mean contrast ranged from +0.50408 to +0.60486. In the 32-by-32 geometry it was +0.57378. Changing the workload produced contrasts of +1.00414 for hot/cold 90/5 and +0.77954 for a Zipf distribution with exponent 1.2. All tested contrasts remained positive, while their magnitude varied with workload and design. These ten-seed checks are descriptive and are separate from the 30-seed primary experiment.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{../research/figures/robustness_sensitivity.png}
+\caption{Sensitivity checks at 70\% mapped occupancy. Points show means and bars show one sample standard deviation across ten seed blocks. Each panel varies one design factor around the base condition.}
+\label{fig:sensitivity}
+\end{figure}
+
+The uniform-workload means increased with occupancy: 1.15252, 2.16984, and 5.06177 at 40\%, 70\%, and 85\%. This direction agrees qualitatively with the over-provisioning trend analyzed by Agarwal and Marrow for uniform random writes and greedy collection \cite{agarwal2010closed}. We do not claim numerical validation because our finite-run implementation does not reproduce the analytical model's full steady-state assumptions.
 
 \begin{table}[ht]
 \centering
-\caption{Program amplification, mean $\pm$ sample SD across five seeds.}
+\caption{Measured program amplification, mean $\pm$ sample SD across 30 seed blocks.}
 \label{tab:results}
 \begin{tabular}{@{}lrr@{}}\toprule
-Utilization & Uniform & Hot/cold mixture \\\midrule
-40\% & 1.136 $\pm$ 0.003 & 1.336 $\pm$ 0.013 \\
-70\% & 1.971 $\pm$ 0.016 & 1.835 $\pm$ 0.011 \\
-85\% & 4.027 $\pm$ 0.058 & 2.244 $\pm$ 0.041 \\\bottomrule
+Mapped occupancy & Uniform & Hot/cold mixture \\\midrule
+40\% & 1.153 $\pm$ 0.006 & 1.482 $\pm$ 0.006 \\
+70\% & 2.170 $\pm$ 0.010 & 2.776 $\pm$ 0.013 \\
+85\% & 5.062 $\pm$ 0.033 & 5.866 $\pm$ 0.040 \\\bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.82\linewidth]{../research/figures/program_amplification.png}
-\caption{Modeled program amplification by active logical-page utilization. Error bars show one sample standard deviation across five seeds.}
+\caption{Measured program amplification by mapped logical-page occupancy. Error bars show one sample standard deviation across 30 paired seed blocks.}
 \end{figure}
 
+\Needspace{7\baselineskip}
 \section{Discussion}
-The increase for uniform traffic at high utilization is consistent with fewer spare pages making reclamation more expensive in this model. The contrasting hot/cold trend indicates an interaction between locality, greedy victim selection, and allocation order for the chosen workload construction. Earlier studies already examine greedy GC and the effects of hot/cold data and locality-aware collection. Our observed reversal therefore cannot be presented as a novel general effect; its defensible value is as a transparent, repeatable result that exposes the behavior and limits of this particular implementation. Five seed blocks and one run length do not establish robustness to other workloads, geometries, or FTL algorithms. The outcome is a bounded simulator page-program ratio, not conventional device WAF validated against hardware.
+The revised experiment compares workload distributions after mapping the same number of active logical pages and applying an explicit warm-up. Hot/cold traffic had higher measured amplification at all three occupancies, and the paired contrast increased with occupancy. This differs from the start-empty baseline, where the contrast changed sign. The baseline did not hold realized occupancy constant during traffic and mixed initialization with measurement. The reversal was not robust to the revised protocol. The experiment does not identify which design choice accounts for the change, because prepopulation, warm-up, measurement separation, and seed count changed together.
+
+The sensitivity grid shows that the positive hot/cold effect persists for the tested workload, geometry, and warm-up variants, although its size changes. The primary experiment's increasing contrast across occupancy therefore describes only its chosen workload and simulator configuration. The tested variations do not establish a general utilization-locality relationship.
+
+Greedy GC and workload locality have extensive prior study. This experiment does not claim novelty for a general interaction between locality and occupancy. It documents how a bounded implementation behaved under a specified synthetic workload after controlling the mapped-page population. The fixed warm-up and one measured interval do not establish steady-state performance. Further work would need varied workload constructions, geometries, warm-up lengths, and independently validated models before making broader claims.
 
 \section{Limitations}
-The simulator is a small abstraction, not a NAND model. It uses an in-memory mapping table and omits persistent recovery, controller caches, metadata writes, wear-leveling migration, timing, parallel channels, bad blocks, endurance failures, and hardware validation. Only six parameter cells, five seeds, and one run length were studied. The hot/cold mixture is not a canonical benchmark. Erase counts are simulated GC operations, not lifetime estimates. A previous 66-fold buffered/direct comparison is withdrawn because the buffered path did not preserve the same logical key-value state. Crash-loss outputs are queue occupancy accounting, not recovered-state durability results.
+The simulator is a software abstraction of a page-mapped FTL. It lacks physical NAND behavior, metadata programs, controller caches, timing, channel parallelism, wear-leveling migration, endurance failures, and device validation. The primary experiment tests three occupancies, two synthetic distributions, one geometry, one warm-up length, and one measurement length. The separate sensitivity grid varies workload family, geometry, and warm-up at 70\% occupancy, but tests only ten seed blocks per cell and one measurement length. Neither experiment establishes warm-up convergence or covers real workload populations. The intervals summarize pseudorandom seed variation under fixed designs and do not represent uncertainty across hardware or workload populations. Erase counts are simulated operations and do not estimate device lifetime.
 
 \section{Conclusion}
-In this simplified page-mapped simulator, utilization and locality jointly affected modeled GC program amplification, with the locality ordering changing across utilization levels. The result is an educational, reproducible sensitivity study and corrected research-software artifact. It does not establish a general buffering benefit, a novel FTL technique, or predictions about commercial flash devices.
+After prepopulating active logical addresses and separating warm-up from measurement, the original sign reversal was absent. Hot/cold-minus-uniform measured program-amplification contrasts were +0.32987, +0.60656, and +0.80465 at 40\%, 70\%, and 85\% mapped occupancy. The contrast increased across these tested conditions. Sensitivity checks retained a positive contrast in the tested variants, with different magnitudes. These results document a bounded behavior of this simulator and workload generator. They do not establish a general research contribution or predict behavior on commercial NAND devices.
 
-\section*{Code and Data Availability}
-Source code, tests, experiment configuration, raw seeded trial outputs, and figure-generation scripts are available in the project repository at \url{https://github.com/apandya55/flash-waf-sim}. No archival DOI has been created. Reproduction commands are in \texttt{research/METHODOLOGY.md}.
+\section*{Code and data availability}
+Source code, tests, experiment configuration, raw trial outputs, and figure-generation scripts are available at \url{https://github.com/apandya55/flash-waf-sim}. The revised raw results and summaries are committed with this manuscript. Reproduction commands and the protocol are in \texttt{research/METHODOLOGY.md}.
 
-\section*{AI Use Disclosure}
-AI tools assisted with repository auditing, code editing, experiment scripting, and manuscript drafting. The author must verify all code, results, citations, and venue policies and revise this disclosure to match the target journal's current requirements.
+\section*{Acknowledgments and AI use disclosure}
+Generative AI tools were utilized for test generation, code refactoring, and drafting assistance; all simulation runs, mathematical derivations, and citations were verified by the author.
 
 \bibliographystyle{plain}
 \bibliography{references}
