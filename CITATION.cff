@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this software or manuscript, please cite it."
+title: "flash-waf-sim: Locality-Utilization Characterization in a Greedy Page-Mapped Flash Simulator"
+authors:
+  - family-names: Pandya
+    given-names: Arnav
+year: 2026
+type: preprint
+license: MIT
+version: "0.1.0"
+repository-code: "https://github.com/apandya55/flash-waf-sim"
+abstract: >-
+  A reproducible sensitivity characterization of modeled page-program
+  amplification under utilization and disjoint hot/cold workloads in a
+  simplified greedy page-mapped flash simulator.
+keywords:
+  - NAND flash
+  - flash translation layer
+  - write amplification
+  - garbage collection
+  - workload locality
+  - simulation
