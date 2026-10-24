@@ -1,219 +1,83 @@
-# FlashWAF: NAND Flash & Write Amplification Simulator
+# FlashWAF: a page-mapped flash simulator
 
-A discrete-event simulation of NAND flash memory, the Flash Translation Layer (FTL), and write amplification dynamics under small-record update workloads.
+FlashWAF is a small Python model of page allocation, out-of-place updates, greedy garbage collection, and block erasure. The simulator helps inspect page-level write amplification in a controlled setting. It does not model NAND timing, persistent FTL metadata, power-loss recovery, or device endurance.
 
-I built this project to explore a fundamental hardware trade-off in storage systems: **how buffering small writes in host RAM protects flash endurance, and how much durability you have to sacrifice to get that protection.**
+## Research result
 
----
+The study measures program amplification in this simulator under equal full-page overwrites. It varies active logical-page utilization and the address distribution. The experiment uses 30 condition runs grouped into five paired pseudorandom seed blocks. Common random numbers pair latent draws across conditions, and the hot and cold address ranges are disjoint.
 
-## The Problem
+The paired hot/cold-minus-uniform contrasts are:
 
-NAND flash memory has a physical asymmetry:
-* **Reads and writes (programs)** happen at **Page** granularity (typically 4 KiB).
-* **Erasures** happen only at **Block** granularity (e.g., 64 pages = 256 KiB).
+- 40% utilization: +0.19936, with a descriptive paired Student-t interval of [0.18603, 0.21269] at df=4.
+- 70% utilization: -0.13604, with an interval of [-0.15308, -0.11900] at df=4.
+- 85% utilization: -1.78292, with an interval of [-1.86718, -1.69866] at df=4.
 
-Because flash cells cannot overwrite data in place without erasing an entire block, updates are written out-of-place to a free page, and the old page is marked invalid. When free blocks run low, the FTL triggers **Garbage Collection (GC)**: it copies surviving valid pages to another block and erases the victim block.
+These intervals describe variation across the five fixed simulation seed blocks. The result characterizes this allocator and workload generator. It does not describe a general physical law for NAND devices.
 
-When a workload issues small random updates (e.g., 128-byte key-value records or append logs), direct writes cause two compounding problems:
-1. **Sub-page write amplification:** A 128-byte write consumes a full 4,096-byte page ($32\times$ write penalty immediately).
-2. **Garbage collection overhead:** The drive rapidly runs out of free pages, forcing repeated block erasures and valid page migrations ($34\times$ additional penalty in our tests).
+Earlier examples compared a direct path with a record buffer. The buffer discarded record addresses, so the two paths represented different logical states. The old 66x comparison and related durability claims are withdrawn. The audit in [research/AUDIT.md](research/AUDIT.md) records the reasons.
 
-Together, these pushed the **Write Amplification Factor (WAF)** to **66.2×**, cycling through **747 block erasures** on a 16 MiB flash chip for just 3.2 MB of host data.
+## Reproduce the study
 
-```
-WAF = (Physical Page Writes + GC Page Copies) × Page Size / Host Bytes Written
-```
+The repository was tested with Python 3.12. It requires Python 3.9 or newer.
 
----
+1. Create and activate a virtual environment:
 
-## Key Results
+   ```sh
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
 
-We benchmarked a 3.2 MB workload (25,000 updates of 128 bytes across 3,200 active LBAs, 78% capacity) under two execution paths:
+2. Install the runtime and test dependencies:
 
-| Metric | Direct Unbuffered (128 B) | Ring-Buffered (4 KiB Page) | Difference |
-| :--- | :---: | :---: | :---: |
-| **Host Data Issued** | 3.05 MB | 3.05 MB | — |
-| **Physical Page Writes** | 25,000 | 782 | **32× reduction** |
-| **GC Page Copies** | 26,713 | 0 | **Eliminated** |
-| **Total Physical Writes** | 51,713 | 782 | **66× reduction** |
-| **Block Erasures (Wear)** | 747 | 0 | **100% reduction** |
-| **Write Amplification (WAF)** | **66.19** | **1.001** | **66× lower wear** |
+   ```sh
+   python -m pip install -r requirements.txt
+   python -m pip install -e '.[dev]'
+   ```
 
-By coalescing 32 records into a 4 KiB buffer before issuing a single flash program, total physical writes drop by 98.5%, staying well within the drive's free headroom and completely preventing garbage collection.
+3. Run all 35 tests:
 
----
+   ```sh
+   python -m pytest -q
+   ```
 
-## The Durability Trade-Off
+4. Re-run the 30 seeded trials:
 
-Holding writes in volatile RAM trades **data durability** for **silicon endurance**. If power cuts before a buffer flushes, uncommitted records are lost.
+   ```sh
+   python experiments/research_sensitivity.py
+   ```
 
-We evaluated 4 buffer policies across 25,000 writes with **50 randomized power-loss crashes**:
+5. Recalculate the cell summaries, paired contrasts, intervals, and figure:
 
-| Policy | Buffer Size | Mean Loss / Crash | Max Loss / Crash | Data Committed | WAF (Committed Data) | Block Erasures |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Unbuffered** | 128 B | **0 B** | **0 B** | **100.00%** | 66.19 | 747 |
-| **1-Page Buffer** | 4 KiB | 1,906 B | 3,840 B | **97.06%** | **1.001** | **0** |
-| **2-Page Buffer** | 8 KiB | 3,987 B | 7,936 B | **94.12%** | **1.001** | **0** |
-| **4-Page Buffer** | 16 KiB | 7,919 B | 16,128 B | **88.74%** | **1.001** | **0** |
+   ```sh
+   python experiments/summarize_results.py
+   ```
 
-### Insights:
-* **The 4 KiB Sweet Spot:** A single 4 KiB buffer captures the entire wear reduction benefit (WAF drops to 1.0, erasures drop to 0) while bounding worst-case single-crash data loss to under 4 KiB.
-* **Larger Buffers are a Trap:** Buffering 8 KiB or 16 KiB doubles and quadruples data loss during crashes without providing any extra WAF reduction, because GC is already zero.
+The raw trials are stored in `research/results/sensitivity_trials.json`. The derived summaries are stored in `research/results/summary.json`. The figure is `research/figures/program_amplification.png`. The full protocol appears in [research/METHODOLOGY.md](research/METHODOLOGY.md), and the validation record appears in [research/VALIDATION.md](research/VALIDATION.md).
 
----
-
-## Analysis & Visualizations
-
-The experiment suite (`experiments/generate_figures.py`) runs parameter sweeps across buffer sizes, working set sizes, and power loss trials.
-
-### 1. WAF vs. Buffer Size (Diminishing Returns)
-![WAF vs Buffer Size](figures/fig1_waf_vs_buffer_size.png)
-*Sweeping buffer size from 1 record (128 B) to 128 records (16 KiB). The entire drop from 66.2× to 1.0× happens in the first 32 records. Beyond 4 KiB, the line is flat.*
-
-### 2. Cumulative Wear Timeline
-![Erasure Timeline](figures/fig2_erasure_timeline.png)
-*Tracking wear over workload progress. Unbuffered writes absorb the first ~4,000 updates before free space is exhausted; after that, wear accumulates at a steady rate of ~30 erasures per 1,000 updates. The buffered line stays at zero.*
-
-### 3. GC Overhead Breakdown
-![GC Overhead](figures/fig3_gc_overhead_breakdown.png)
-*Without buffering, 52% of all physical flash writes are GC migrations (wasted I/O). A 512-byte buffer drops GC overhead to 15%, and an 8-record buffer (1 KiB) eliminates it entirely for this workload.*
-
-### 4. Working Set Sensitivity
-![Working Set Sensitivity](figures/fig4_working_set_sensitivity.png)
-*Varying unique LBAs from 100 to 3,200 (2% to 78% drive utilization). Under unbuffered writes, WAF spikes sharply at higher utilization as GC has fewer free blocks to choose from. The buffered setup is immune.*
-
-### 5. Durability vs. WAF Pareto Frontier
-![Pareto Frontier](figures/fig5_durability_pareto.png)
-*Mapping each policy on the durability vs. wear frontier. The 1-page buffer clearly occupies the top-left Pareto-optimal point.*
-
-### 6. Crash Loss Distribution (10 Seeds)
-![Power Loss Box Plot](figures/fig6_power_loss_boxplot.png)
-*Distribution of mean data loss across 10 random workload seeds (50 crashes each). Loss scales linearly with buffer capacity and has narrow variance, meaning loss per crash is tightly predictable.*
-
-### 7. Physical Page State Evolution
-![Page State Evolution](figures/fig7_page_state_evolution.png)
-*64×64 silicon grid showing all 4,096 physical pages at 25%, 50%, 75%, and 100% of the unbuffered workload. Red cells represent stale/invalid pages that trigger GC.*
-
-### 8. LBA Access Frequency
-![LBA Access Heatmap](figures/fig8_lba_access_heatmap.png)
-*Access distribution of the 3,200 LBAs under uniform random updates (mean = 7.8 writes/LBA, std = 2.8), confirming workload uniformity.*
-
----
-
-## Silicon Wear Heatmap
-
-Per-block physical erase counts across all 64 blocks under identical color scaling (`vmin=0, vmax=14`):
-
-![Wear Heatmaps](figures/wear_heatmaps.png)
-
----
-
-## Repository Structure
-
-```text
-flash-waf-sim/
-├── flash_sim/                     # Self-contained Python package
-│   ├── __init__.py               # Top-level exports
-│   ├── models.py                 # Page, Block, PageState dataclasses
-│   ├── simulator.py              # FlashSimulator engine (FTL, L2P, Greedy GC)
-│   ├── buffer.py                 # User-space circular RingBuffer
-│   ├── durability.py             # PowerLossSimulator & DurabilityResult
-│   └── workload.py               # Synthetic workload generator
-├── experiments/                  # Research benchmarks & parameter sweeps
-│   ├── benchmark_waf.py          # 3.2 MB WAF benchmark (unbuffered vs. buffered)
-│   ├── durability_eval.py        # Sudden power-loss crash experiments
-│   └── generate_figures.py       # 8-figure publication visualization suite
-├── examples/                     # Interactive educational demos
-│   ├── 01_storage_basics.py      # Page writes, block erasures, and counters
-│   └── 02_garbage_collection.py  # Out-of-place updates & GC victim selection
-├── figures/                      # Generated research charts & heatmaps (9 PNGs)
-│   ├── wear_heatmaps.png         # Per-block silicon wear heatmap
-│   └── fig1 ... fig8             # Analytical figures
-├── tests/                        # Categorical unit test suite (32 tests)
-│   ├── test_models.py            # Storage structures & state invariants
-│   ├── test_allocation_gc.py     # L2P mapping, out-of-place writes & GC
-│   ├── test_buffer.py            # Ring buffer coalescing & flush chunking
-│   └── test_durability.py        # Crash simulation & survived byte tracking
-├── pyproject.toml                # Package configuration & pytest settings
-├── requirements.txt              # Minimal dependencies (numpy, matplotlib)
-└── README.md
-```
-
----
-
-## Architecture & Usage
+## Use the simulator
 
 ```python
-from flash_sim import FlashSimulator, RingBuffer, generate_workload
+from flash_sim import FlashSimulator
 
-# Initialize 16 MiB flash: 64 blocks x 64 pages x 4 KiB
-sim = FlashSimulator(num_blocks=64, pages_per_block=64, page_size_bytes=4096)
-
-# Attach a 4 KiB volatile ring buffer (32 records of 128 bytes)
-buffer = RingBuffer(flash_sim=sim, capacity_records=32, record_size_bytes=128)
-
-# Generate a synthetic 3.2 MB workload
-workload = generate_workload(num_updates=25000, record_size=128, num_lbas=3200)
-
-# Write records — automatically flushes to flash every 4 KiB
-for lba, record_bytes in workload:
-    buffer.push(record=record_bytes, lba=lba)
-
-buffer.flush()
-
-# Check hardware counters
-print(f"Physical page writes: {sim.physical_page_writes}")
-print(f"GC page copies:       {sim.gc_page_copies}")
-print(f"Block erasures:       {sim.block_erasures}")
+sim = FlashSimulator(num_blocks=16, pages_per_block=32)
+sim.write_logical_page(7, b"full-page payload")
+assert sim.read_logical_page(7) == b"full-page payload"
+sim.check_invariants()
 ```
 
----
+`write_logical_page` represents one page-level logical write. The simulator does not model sub-page programming. `RingBuffer` remains an educational record packer with incomplete logical-address semantics. `PowerLossSimulator` reports bytes left in its volatile queue at an injected event; it does not restart the simulator or recover persistent state.
 
-## How to Run
+## Repository guide
 
-### Installation
-```bash
-git clone https://github.com/apandya55/flash-waf-sim.git
-cd flash-waf-sim
-pip install -r requirements.txt
-```
+- `flash_sim/` contains the simulator and supporting models.
+- `tests/` contains the unit and invariant tests.
+- `experiments/` contains the reproducible trial and summary scripts.
+- `paper/` contains the LaTeX manuscript, bibliography, and compiled PDF.
+- `research/` contains the audit, protocol, validation record, venue screen, and submission-readiness report.
+- `CITATION.cff` contains citation metadata for archive deposits.
 
-### Run Unit Tests
-```bash
-pytest
-```
-```text
-32 passed in 0.23s
-```
-
-### Run Experiments & Generate Figures
-```bash
-# 3.2 MB WAF benchmark comparison
-python3 experiments/benchmark_waf.py
-
-# Durability power-loss evaluation & wear heatmaps
-python3 experiments/durability_eval.py
-
-# 8-figure parameter sweep visualization suite
-python3 experiments/generate_figures.py
-```
-
-### Run Educational Examples
-```bash
-python3 examples/01_storage_basics.py
-python3 examples/02_garbage_collection.py
-```
-
----
-
-## Modeling Assumptions & Trade-offs
-
-1. **Greedy GC vs. Proactive Wear Leveling:** The GC selects the block with the most invalid pages, breaking ties by lowest erase count. In production FTLs, cold data migration is also required to prevent infrequently-written blocks from holding low erase counts indefinitely.
-2. **Sub-Page LBA Mapping:** In this implementation, aggregated 128-byte records inside a buffered 4 KiB page are written sequentially or mapped to an active page coordinate. In a production key-value store or database WAL, each page includes a slot directory or append-log header to index individual records within the 4 KiB physical boundary.
-3. **No PLP Capacitors:** This model reflects consumer-grade drives without power-loss protection (PLP) tantalum capacitors. Enterprise SSDs use hardware hold-up capacitors to flush 10–50 ms of DRAM cache during an unexpected voltage drop.
-
----
+Generative AI tools were utilized for test generation, code refactoring, and drafting assistance; all simulation runs, mathematical derivations, and citations were verified by the author.
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+The project uses the MIT License. See [LICENSE](LICENSE).
