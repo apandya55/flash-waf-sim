@@ -1,17 +1,30 @@
 # Experimental methodology
 
-Run from the repository root with Python 3.12, NumPy, and Matplotlib:
+Run from the repository root with Python 3.9 or newer. The tested environment uses Python 3.12. Install the project and development dependencies, then run:
 
 ```sh
-python3 -m pytest -q
-python3 experiments/research_sensitivity.py
-python3 experiments/summarize_results.py
+python -m pip install -e '.[dev]'
+python -m pytest -q
+python experiments/research_sensitivity.py
+python experiments/summarize_results.py
 ```
 
-The protocol uses 16 erase blocks × 32 pages (512 physical pages), 4,096-byte pages, a GC threshold of 32 free pages, and 5,000 full-page overwrites per run. Active logical-page counts are rounded from 40%, 70%, and 85% of physical pages. Uniform runs sample the active address space uniformly. Hot/cold runs send 80% of updates to a hot set containing 10% of active addresses and 20% to a disjoint cold set containing the rest. Five NumPy `default_rng` seeds (11, 23, 47, 89, 101) are paired across all six utilization-by-locality conditions.
+The experiment models 16 blocks with 32 pages each, 512 physical pages total, 4,096-byte pages, and a garbage-collection threshold of 32 free pages. The three conditions use 205, 358, and 435 active logical pages, corresponding to 40%, 70%, and 85% of physical capacity after rounding. Before traffic, the experiment writes every active LBA once in ascending order. All conditions therefore begin warm-up with exactly the configured number of mapped and valid pages.
 
-The generator uses common random numbers: each seed creates latent uniform arrays used consistently across the six conditions, then maps those draws into the condition-specific workload. This corrects the earlier version, in which conditional random-number consumption and overlapping hot/cold address ranges made same-numbered seeds fail to provide a coherent paired design. The address sequences are not identical between conditions; the aligned entities are the latent draws. Each seed is one replication block, independent of the other seed streams under the pseudorandom generator. Thus there are 30 runs but only five independent blocks for paired locality and interaction contrasts. This estimates simulation variability under these configured distributions; it does not sample real drives or workload populations.
+Each of 30 seed blocks runs all six utilization-by-locality conditions, for 180 condition runs. Each block uses a separate `numpy.random.default_rng` seed (202601 through 202630). For each seed, the same three latent uniform random arrays drive the condition transformations. Uniform traffic samples the full active LBA range evenly. Hot/cold traffic directs 80% of updates to a hot range containing 10% of active LBAs and 20% to the disjoint remainder. Common random numbers pair latent draws; transformations intentionally produce different address sequences.
 
-The outcome called **program amplification** is `(host-triggered page programs + GC copy page programs) / host-triggered page programs`, in page-programs per page-program. It excludes metadata, controller writes, NAND internal operations, and host bytes. Erasures are cumulative modeled block-erase operations; per-block erase counts are reported. Each trial checks L2P and page-state invariants. Summary means and sample standard deviations are derived directly from raw trial JSON. These workloads begin from an empty device, so results include startup and sustained GC behavior together; there is no claim of steady-state convergence.
+Each run applies 5,000 warm-up overwrites, followed by 5,000 measured overwrites. The experiment checks simulator invariants at the phase boundary and end. It records mapped and valid page counts after warm-up and measurement. All must equal the configured active-page count. The measured counters are deltas from the warm-up boundary, so warm-up host programs, GC copies, and erasures do not enter the reported outcome. This fixed warm-up length defines the protocol; it does not establish steady-state convergence.
 
-Limitations: one logical address maps to one full physical page, no sub-page records or write buffer are present, and the allocator/GC policy is a small greedy abstraction. Results combine device startup and later GC behavior; no steady-state stopping rule was used. Results describe this implementation and these synthetic distributions only.
+Let $H$ be host page programs during measurement and $G$ be valid-page GC copy programs during measurement. We report program amplification as $(H+G)/H$, in modeled physical page programs per measured host page program. Metadata programs and other device work are excluded. We calculate hot/cold-minus-uniform contrasts within each seed block, then difference-in-differences across utilization levels. The reported intervals are two-sided 95% paired Student-$t$ intervals across 30 seed blocks, with $df=29$. They characterize variation across pseudorandom streams for this fixed simulator and generated workload. They do not support inference about physical drives or a population of workloads.
+
+Raw runs are in `research/results/sensitivity_trials.json`; derived cell summaries, paired contrasts, and intervals are in `research/results/summary.json`. The figure is regenerated by `experiments/summarize_results.py`. The prior start-empty, five-seed study is preserved separately in `research/results/baseline_start_empty_5seed/` and its figure in `research/figures/baseline_start_empty_5seed/`. Baseline results are not pooled with the revised experiment.
+
+## Limitations
+
+This is a software bookkeeping model with one full page per logical write and a simple greedy collector. It omits persistent mapping metadata, NAND timing, parallel channels, bad blocks, ECC, static wear leveling, endurance failures, and hardware validation. The workload is synthetic and the geometry is fixed. A fixed warm-up phase reduces the start-empty bias, but the study does not test convergence to steady state. The results characterize this simulator and protocol only.
+
+## Bounded validation sprint
+
+The follow-up sprint varies one factor at a time around 70% occupancy: four workload families, a 32-by-32 geometry versus the baseline 16-by-32 geometry, and warm-up lengths of 0, 2,500, and 10,000 updates. Every cell uses ten paired seed blocks and 5,000 measured updates. This is a descriptive robustness check, not a search for a favorable significance result. The raw and derived outputs are generated by `experiments/robustness_validation.py` and `experiments/summarize_robustness.py`. The summary reports paired Student-t intervals with df=9 for seed-block variation within each tested contrast; they do not represent uncertainty across workload populations or simulator designs.
+
+The analytical reference check uses Agarwal and Marrow's 2010 published model of write amplification under uniformly distributed random writes and greedy garbage collection. Crossref metadata confirms DOI `10.1109/GLOCOMW.2010.5700261`, title, authors, venue, and year. The simulator's uniform mean amplification rises from 1.153 at 40% to 2.170 at 70% and 5.062 at 85%, consistent with the reference model's qualitative over-provisioning direction. The check does not claim numerical validation because the simulator's finite run, initialization, allocator, and GC trigger do not reproduce all analytical assumptions.

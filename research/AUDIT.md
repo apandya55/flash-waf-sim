@@ -1,6 +1,6 @@
-# FlashWAF independent audit
+# FlashWAF independent audit of the original baseline
 
-Audit date: 2026-10-23. Baseline environment: macOS, Python 3.12.3, pytest 9.1.1; NumPy and Matplotlib are installed. Baseline `python3 -m pytest -q`: **32 passed in 0.33 s**. `python3 experiments/benchmark_waf.py` completes in 4.23 s and reproduces its displayed 25,000 / 782 programs, 26,713 copies, 747 erasures, and 66.193 / 1.001 ratios. `python3 experiments/durability_eval.py` completes in 9.26 s. `python3 experiments/generate_figures.py` generated figures 1–3, then was interrupted after it spent over 30 s in figure 4's workload; the run did not complete. The stale `visualizations.py` imports absent `benchmark_phase3`.
+Audit date: 2026-10-23. This document audits the original baseline and remains useful for the legacy buffer and durability claims. The revised occupancy-controlled study and its validation are documented in `research/VALIDATION.md`. Baseline environment: macOS, Python 3.12.3, pytest 9.1.1; NumPy and Matplotlib are installed. Baseline `python3 -m pytest -q`: **32 passed in 0.33 s**. `python3 experiments/benchmark_waf.py` completes in 4.23 s and reproduces its displayed 25,000 / 782 programs, 26,713 copies, 747 erasures, and 66.193 / 1.001 ratios. `python3 experiments/durability_eval.py` completes in 9.26 s. `python3 experiments/generate_figures.py` generated figures 1–3, then was interrupted after it spent over 30 s in figure 4's workload; the run did not complete. The stale `visualizations.py` imports absent `benchmark_phase3`.
 
 ## Architecture and execution path
 
