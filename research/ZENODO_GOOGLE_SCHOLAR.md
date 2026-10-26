@@ -19,9 +19,10 @@ Scholar relies on crawlable scholarly documents and compliant metadata, not mere
 
 ## Human-action checklist
 
-- [ ] Select and confirm the venue's current preprint, data, AI disclosure, and fee rules.
-- [ ] Review author order, contact details, license, and all public metadata.
-- [ ] Create/approve the GitHub release and Zenodo record under the author's account.
+- [x] Select and confirm the venue's current preprint, data, AI disclosure, and fee rules.
+- [x] Review author order, contact details, license, and all public metadata.
+- [x] Create/approve the GitHub release and Zenodo record under the author's account (Record 23655212, DOI 10.5281/zenodo.23655212).
+- [x] Synchronize and verify rich InvenioRDM search metadata and keywords via authenticated REST API (verified 2026-10-26).
 - [ ] Publish the dataset/paper records only when allowed; link DOIs and repository versions.
 - [ ] Submit to the journal yourself and retain the decision/review history.
 - [ ] After acceptance, update related identifiers and permitted manuscript version.
