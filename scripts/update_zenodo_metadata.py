@@ -100,6 +100,7 @@ def main() -> int:
 
     updated_metadata: Dict[str, Any] = {
         "title": local_meta.get("title", draft_meta.get("title", "FlashWAF: a page-mapped flash simulator")),
+        "publisher": "Zenodo",
         "publication_date": "2026-10-26",
         "description": local_meta.get("description", draft_meta.get("description", "")),
         "resource_type": {"id": "software"},
