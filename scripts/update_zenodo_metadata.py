@@ -19,7 +19,7 @@ import sys
 from typing import Any, Dict
 
 RECORD_ID = "23655212"
-ZENODO_API_URL = f"https://zenodo.org/api/records/{RECORD_ID}"
+RDM_DRAFT_URL = f"https://zenodo.org/api/records/{RECORD_ID}/draft"
 LEGACY_API_URL = f"https://zenodo.org/api/deposit/depositions/{RECORD_ID}"
 
 
@@ -63,12 +63,7 @@ def main() -> int:
     if not token:
         print("\n[!] ZENODO_TOKEN is not configured.", file=sys.stderr)
         print("To update your Zenodo record, please provide a Personal Access Token with deposit permissions.", file=sys.stderr)
-        print("\nSteps to create a token:", file=sys.stderr)
-        print("1. Log in to https://zenodo.org/account/settings/applications/tokens/new/")
-        print("2. Name: 'FlashWAF Metadata Update'")
-        print("3. Scopes: Check 'deposit:actions' and 'deposit:write'")
-        print("4. Click 'Create' and copy the token")
-        print("5. Run securely in terminal:")
+        print("\nRun securely in terminal:")
         print("   export ZENODO_TOKEN=\"your_token_here\"")
         print("   python3 scripts/update_zenodo_metadata.py\n")
         return 1
@@ -80,63 +75,64 @@ def main() -> int:
 
     print(f"[*] Connecting to Zenodo for Record ID: {RECORD_ID}...")
 
-    # Fetch current published record to verify baseline
-    code, current = run_curl(f"https://zenodo.org/api/records/{RECORD_ID}")
+    # Step 1: Create or access draft of existing published record
+    print("\n[*] Step 1: Accessing edit draft on existing record (no new version)...")
+    code, draft_resp = run_curl(RDM_DRAFT_URL, method="POST", token=token)
+    
+    if code in (200, 201):
+        print("[✓] Draft initialized.")
+    elif code == 400 or "draft already exists" in str(draft_resp).lower():
+        print("[✓] Draft already in progress for this record. Proceeding...")
+    else:
+        print(f"[!] Draft POST response (HTTP {code}): {draft_resp}")
+
+    # Fetch the draft to inspect its current fields
+    code, current_draft = run_curl(RDM_DRAFT_URL, method="GET", token=token)
     if code != 200:
-        print(f"[!] Failed to fetch public record (HTTP {code})", file=sys.stderr)
+        print(f"[!] Failed to fetch draft details (HTTP {code}): {current_draft}", file=sys.stderr)
         return 1
 
-    curr_meta = current.get("metadata", {})
-    print(f"[✓] Found existing record: \"{curr_meta.get('title')}\"")
-    print(f"    DOI: {current.get('doi')}")
-    print(f"    Author: {curr_meta.get('creators')}")
-    print(f"    Files: {[f.get('key') for f in current.get('files', [])]}")
+    draft_meta = current_draft.get("metadata", {})
 
-    # Build updated metadata payload while preserving core invariants
-    updated_metadata = {
-        "title": local_meta.get("title", curr_meta.get("title")),
-        "publication_date": curr_meta.get("publication_date", "2026-10-26"),
-        "description": local_meta.get("description", curr_meta.get("description")),
-        "creators": curr_meta.get("creators", [{"name": "Arnav Pandya"}]),
-        "keywords": local_meta.get("keywords", curr_meta.get("keywords")),
-        "license": curr_meta.get("license", {"id": "mit-license"}),
-        "resource_type": curr_meta.get("resource_type", {"title": "Software", "type": "software"}),
-        "related_identifiers": curr_meta.get("related_identifiers", [
+    # Step 2: Build exact InvenioRDM compliant metadata
+    keywords = local_meta.get("keywords", [])
+    subjects = [{"subject": kw} for kw in keywords]
+
+    updated_metadata: Dict[str, Any] = {
+        "title": local_meta.get("title", draft_meta.get("title", "FlashWAF: a page-mapped flash simulator")),
+        "publication_date": "2026-10-26",
+        "description": local_meta.get("description", draft_meta.get("description", "")),
+        "resource_type": {"id": "software"},
+        "creators": [
+            {
+                "person_or_org": {
+                    "type": "personal",
+                    "given_name": "Arnav",
+                    "family_name": "Pandya"
+                }
+            }
+        ],
+        "subjects": subjects,
+        "rights": [{"id": "mit"}],
+        "related_identifiers": [
             {
                 "identifier": "https://github.com/apandya55/flash-waf-sim/tree/v1.0.0",
-                "relation": "isSupplementTo",
-                "resource_type": "software",
-                "scheme": "url"
+                "scheme": "url",
+                "relation_type": {"id": "issupplementto"},
+                "resource_type": {"id": "software"}
             }
-        ]),
-        "version": curr_meta.get("version", "1.0.0")
+        ],
+        "version": "1.0.0"
     }
 
-    # Step 1: Create or access draft of existing published record
-    print("\n[*] Step 1: Initiating draft edit on existing record (no new version)...")
-    code, draft_resp = run_curl(f"https://zenodo.org/api/records/{RECORD_ID}/draft", method="POST", token=token)
-    
-    draft_url = f"https://zenodo.org/api/records/{RECORD_ID}/draft"
-    is_rdm = True
+    # Add custom repository pointer if present
+    if "custom" in draft_meta:
+        updated_metadata["custom"] = draft_meta["custom"]
+    else:
+        updated_metadata["custom"] = {"code:codeRepository": "https://github.com/apandya55/flash-waf-sim"}
 
-    if code == 403 or code == 404:
-        # Fallback to legacy deposit API
-        print(f"[*] Trying legacy deposition API (HTTP {code} on RDM draft endpoint)...")
-        code, draft_resp = run_curl(f"{LEGACY_API_URL}/actions/edit", method="POST", token=token)
-        draft_url = LEGACY_API_URL
-        is_rdm = False
-
-    if code not in (200, 201):
-        # Check if draft already exists
-        if "draft already exists" in str(draft_resp).lower() or code == 400:
-            print("[✓] Draft already in progress for this record. Proceeding...")
-        else:
-            print(f"[!] Unable to create draft (HTTP {code}): {draft_resp}", file=sys.stderr)
-            return 1
-
-    # Step 2: Update draft metadata
-    print("[*] Step 2: Updating metadata payload...")
-    code, update_resp = run_curl(draft_url, method="PUT", token=token, data={"metadata": updated_metadata})
+    print("[*] Step 2: Updating draft metadata payload (InvenioRDM schema)...")
+    code, update_resp = run_curl(RDM_DRAFT_URL, method="PUT", token=token, data={"metadata": updated_metadata})
     if code not in (200, 201):
         print(f"[!] Failed to update metadata (HTTP {code}): {update_resp}", file=sys.stderr)
         return 1
@@ -144,7 +140,7 @@ def main() -> int:
 
     # Step 3: Publish updated draft back to existing record
     print("[*] Step 3: Publishing updated draft back to existing record...")
-    pub_url = f"https://zenodo.org/api/records/{RECORD_ID}/draft/actions/publish" if is_rdm else f"{LEGACY_API_URL}/actions/publish"
+    pub_url = f"{RDM_DRAFT_URL}/actions/publish"
     code, pub_resp = run_curl(pub_url, method="POST", token=token)
     if code not in (200, 201, 202):
         print(f"[!] Failed to publish draft (HTTP {code}): {pub_resp}", file=sys.stderr)
@@ -161,8 +157,9 @@ def main() -> int:
         print(f"[✓] Title: {vm.get('title')}")
         print(f"[✓] DOI: {verified.get('doi')} (Unchanged)")
         print(f"[✓] Version: {vm.get('version')} (Unchanged)")
-        print(f"[✓] Keywords count: {len(vm.get('keywords', []))}")
-        print(f"    Keywords: {vm.get('keywords')}")
+        subjects_list = vm.get("subjects") or vm.get("keywords") or []
+        print(f"[✓] Subjects / Keywords count: {len(subjects_list)}")
+        print(f"    Subjects: {subjects_list}")
         print(f"[✓] Description length: {len(vm.get('description', ''))} characters")
     return 0
 
