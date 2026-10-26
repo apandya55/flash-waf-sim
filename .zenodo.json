@@ -1,7 +1,7 @@
 {
   "title": "FlashWAF: a page-mapped flash simulator",
   "upload_type": "software",
-  "description": "Python simulator for page allocation, out-of-place updates, greedy garbage collection, and modeled page-program amplification. Includes reproducible synthetic experiments, raw trial outputs, tests, and analysis scripts. Results characterize this simulator and do not predict physical NAND device behavior.",
+  "description": "<p><strong>FlashWAF</strong> is an open-source Python simulator that models page-mapped Flash Translation Layer (FTL) address mapping, out-of-place page updates, greedy garbage collection, and page-program write amplification under controlled synthetic workloads.</p><p>Designed for storage systems research and pedagogy, FlashWAF isolates algorithmic FTL dynamics in a pure-Python, dependency-light framework. It includes reproducible benchmark pipelines, raw trial outputs, automated invariant tests, and analysis scripts.</p><h3>Core Modeling Components</h3><ul><li><strong>Page-Mapped FTL:</strong> Dynamic logical-to-physical (L2P) address translation table.</li><li><strong>Out-of-Place Updates:</strong> Tri-state page lifecycles (<code>FREE</code> &rarr; <code>VALID</code> &rarr; <code>INVALID</code>) with invalidation counters upon host overwrites.</li><li><strong>Greedy Garbage Collection:</strong> Victim block selection maximizing invalid page count, live valid-page copying, and block-level erasures with erase-count tie-breaking.</li><li><strong>Write Amplification Factor (WAF):</strong> Exact measurement of total flash page programs per user page request: <code>WAF = (Host Page Writes + GC Copy Writes) / Host Page Writes</code>.</li><li><strong>Synthetic Workloads:</strong> Uniform random, parameterized hot/cold (e.g. 80/10, 90/5), and discrete Zipfian distributions using reproducible common random numbers.</li></ul><h3>Included Experimental Benchmarks</h3><ul><li><strong>Primary 30-Seed Paired Experiment:</strong> Prepopulated active LBAs across 40%, 70%, and 85% mapped occupancy under uniform vs. 80/10 hot/cold traffic (180 condition runs total). Measured paired hot/cold-minus-uniform contrasts: +0.32987 at 40% occupancy (95% CI [0.32665, 0.33310]), +0.60656 at 70% ([0.60054, 0.61258]), and +0.80465 at 85% ([0.78676, 0.82253]).</li><li><strong>Robustness & Sensitivity Grid:</strong> Evaluates warm-up lengths (0 to 10,000 updates), geometry scaling (16x32 vs 32x32 blocks), and workload skew variations at 70% occupancy across 10 paired seeds.</li></ul><h3>Scientific Scope & Boundaries</h3><p>FlashWAF is a discrete computational research model, not an empirical emulator of physical NAND hardware. It does not model physical NAND analog timing (program/erase latencies), multi-channel parallelism, wear leveling pools, crash recovery journals, or hardware bit-error ECC. Findings characterize this simulator under synthetic workloads and do not predict physical SSD endurance.</p><p>Repository: <a href=\"https://github.com/apandya55/flash-waf-sim\">https://github.com/apandya55/flash-waf-sim</a></p>",
   "creators": [
     {
       "name": "Arnav Pandya"
@@ -11,9 +11,17 @@
   "keywords": [
     "NAND flash",
     "flash translation layer",
+    "FTL",
+    "page-mapped FTL",
     "write amplification",
     "garbage collection",
-    "simulation"
+    "greedy garbage collection",
+    "out-of-place updates",
+    "workload locality",
+    "storage systems",
+    "research software",
+    "simulation",
+    "Python"
   ],
   "version": "1.0.0"
 }

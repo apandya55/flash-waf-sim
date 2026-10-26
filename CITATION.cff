@@ -22,7 +22,14 @@ abstract: >-
 keywords:
   - NAND flash
   - flash translation layer
+  - FTL
+  - page-mapped FTL
   - write amplification
   - garbage collection
+  - greedy garbage collection
+  - out-of-place updates
   - workload locality
+  - storage systems
+  - research software
   - simulation
+  - Python
