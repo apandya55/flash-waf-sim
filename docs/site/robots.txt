@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://arnavpandya.com/projects/flashwaf/sitemap.xml

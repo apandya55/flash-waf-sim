@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FlashWAF — Python NAND Flash Translation Layer Simulator</title>
+  <meta name="description" content="Open-source Python NAND flash translation layer simulator modeling out-of-place updates, greedy garbage collection, and reproducible write amplification.">
+  <meta name="author" content="Arnav Pandya">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://arnavpandya.com/projects/flashwaf/">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="FlashWAF Research Software">
+  <meta property="og:title" content="FlashWAF — Python NAND Flash Translation Layer Simulator">
+  <meta property="og:description" content="Pure Python simulation of page-mapped FTLs, out-of-place page updates, greedy garbage collection, and write amplification factor (WAF) under synthetic access workloads.">
+  <meta property="og:url" content="https://arnavpandya.com/projects/flashwaf/">
+  <meta property="og:image" content="https://arnavpandya.com/projects/flashwaf/program_amplification.png">
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="FlashWAF — Python NAND Flash Translation Layer Simulator">
+  <meta name="twitter:description" content="Pure Python simulation of page-mapped FTLs, out-of-place page updates, greedy garbage collection, and write amplification factor (WAF) under synthetic access workloads.">
+  <meta name="twitter:image" content="https://arnavpandya.com/projects/flashwaf/program_amplification.png">
+
+  <!-- Google Scholar Metadata (Technical Report) -->
+  <meta name="citation_title" content="Utilization and Locality in a Prepopulated Greedy Page-Mapped Flash Simulator">
+  <meta name="citation_author" content="Pandya, Arnav">
+  <meta name="citation_publication_date" content="2026/10">
+  <meta name="citation_technical_report_number" content="FlashWAF-TR-2026-01">
+  <meta name="citation_pdf_url" content="https://arnavpandya.com/projects/flashwaf/paper.pdf">
+  <meta name="citation_abstract_html_url" content="https://arnavpandya.com/projects/flashwaf/">
+
+  <!-- Schema.org JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareSourceCode",
+        "@id": "https://arnavpandya.com/projects/flashwaf/#software",
+        "name": "FlashWAF",
+        "alternateName": "flash-waf-sim",
+        "description": "Python simulator for page allocation, out-of-place updates, greedy garbage collection, and modeled page-program write amplification under controlled synthetic workloads.",
+        "version": "1.0.0",
+        "programmingLanguage": {
+          "@type": "ComputerLanguage",
+          "name": "Python",
+          "version": ">=3.9"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "Arnav Pandya",
+          "url": "https://arnavpandya.com"
+        },
+        "codeRepository": "https://github.com/apandya55/flash-waf-sim",
+        "license": "https://opensource.org/licenses/MIT",
+        "citation": "https://doi.org/10.5281/zenodo.23655212",
+        "keywords": [
+          "NAND flash",
+          "flash translation layer",
+          "FTL",
+          "write amplification",
+          "garbage collection",
+          "flash memory",
+          "simulation",
+          "research software"
+        ]
+      },
+      {
+        "@type": "TechReport",
+        "@id": "https://arnavpandya.com/projects/flashwaf/#report",
+        "name": "Utilization and Locality in a Prepopulated Greedy Page-Mapped Flash Simulator",
+        "author": {
+          "@type": "Person",
+          "name": "Arnav Pandya",
+          "url": "https://arnavpandya.com"
+        },
+        "datePublished": "2026-10",
+        "reportNumber": "FlashWAF-TR-2026-01",
+        "url": "https://arnavpandya.com/projects/flashwaf/paper.pdf",
+        "abstract": "We measured page-program amplification in a simplified page-mapped flash translation layer simulator at 40%, 70%, and 85% mapped-page occupancy across 180 runs covering 30 paired pseudorandom seed blocks. The paired hot/cold-minus-uniform differences were +0.32987 at 40% occupancy, +0.60656 at 70%, and +0.80465 at 85%. Results describe this simulator and synthetic workload design, not physical NAND devices."
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg-color: #fcfcfc;
+      --card-bg: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #475569;
+      --border-color: #e2e8f0;
+      --primary: #0284c7;
+      --primary-hover: #0369a1;
+      --accent: #0f172a;
+      --code-bg: #f1f5f9;
+      --tag-bg: #e0f2fe;
+      --tag-text: #0369a1;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-color: #0f172a;
+        --card-bg: #1e293b;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --border-color: #334155;
+        --primary: #38bdf8;
+        --primary-hover: #7dd3fc;
+        --accent: #f8fafc;
+        --code-bg: #0b1120;
+        --tag-bg: #1e3a5f;
+        --tag-text: #7dd3fc;
+      }
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.65;
+      color: var(--text-main);
+      background-color: var(--bg-color);
+      padding: 0 1rem;
+    }
+    .container {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 2.5rem 0 5rem 0;
+    }
+    header {
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+    }
+    .nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.95rem;
+    }
+    .nav a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .nav a:hover { text-decoration: underline; }
+    h1 {
+      font-size: 2.1rem;
+      line-height: 1.25;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+    .lead {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+    }
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: var(--tag-bg);
+      color: var(--tag-text);
+      text-decoration: none;
+      border: 1px solid var(--border-color);
+    }
+    section {
+      margin-bottom: 3rem;
+    }
+    h2 {
+      font-size: 1.45rem;
+      color: var(--accent);
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.4rem;
+    }
+    h3 {
+      font-size: 1.15rem;
+      color: var(--accent);
+      margin: 1.25rem 0 0.5rem 0;
+    }
+    p { margin-bottom: 1rem; }
+    ul, ol {
+      margin: 0 0 1.25rem 1.5rem;
+    }
+    li { margin-bottom: 0.4rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.25rem 0;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border-color);
+      padding: 0.65rem 0.8rem;
+      text-align: left;
+    }
+    th {
+      background-color: var(--code-bg);
+      font-weight: 600;
+    }
+    pre {
+      background-color: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 1rem;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.88rem;
+      margin: 1rem 0 1.5rem 0;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.9em;
+      background: var(--code-bg);
+      padding: 0.15rem 0.35rem;
+      border-radius: 3px;
+    }
+    pre code { background: none; padding: 0; }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin: 1.25rem 0;
+    }
+    .callout {
+      border-left: 4px solid var(--primary);
+      padding: 0.75rem 1rem;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-left-width: 4px;
+      border-radius: 4px;
+      margin: 1rem 0;
+      font-size: 0.95rem;
+    }
+    img.responsive-fig {
+      width: 100%;
+      max-width: 820px;
+      height: auto;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      display: block;
+      margin: 1.5rem auto 0.5rem auto;
+    }
+    .fig-caption {
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+    }
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding-top: 2rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <nav class="nav" aria-label="Main Navigation">
+        <a href="https://github.com/apandya55/flash-waf-sim">GitHub Repository</a>
+        <a href="https://doi.org/10.5281/zenodo.23655212">Zenodo DOI: 10.5281/zenodo.23655212</a>
+        <a href="paper.pdf">Download Research Report (PDF)</a>
+        <a href="explainer.html">Technical Explanation Guide</a>
+        <a href="https://arnavpandya.com">Author Homepage</a>
+      </nav>
+      <h1>FlashWAF: Python NAND Flash Translation Layer Simulator</h1>
+      <p class="lead">A pure-Python simulator of page-mapped FTLs, out-of-place updates, greedy garbage collection, and write amplification under controlled synthetic workloads.</p>
+      <div class="badges">
+        <a class="badge" href="https://doi.org/10.5281/zenodo.23655212">DOI 10.5281/zenodo.23655212</a>
+        <a class="badge" href="https://github.com/apandya55/flash-waf-sim/releases/tag/v1.0.0">Release v1.0.0</a>
+        <span class="badge">Python 3.9+</span>
+        <span class="badge">MIT License</span>
+        <span class="badge">36 Automated Tests Passing</span>
+      </div>
+    </header>
+
+    <main>
+      <section id="overview">
+        <h2>Overview &amp; Purpose</h2>
+        <p>FlashWAF is an open-source research software platform created to model and study the fundamental dynamics of <strong>NAND flash write amplification</strong>. Designed for researchers, storage systems engineers, and students, it isolates the algorithmic interaction between page allocation, out-of-place updates, and garbage collection without requiring heavy C++ full-system emulators.</p>
+        
+        <div class="callout">
+          <strong>Scientific Scope &amp; Boundary:</strong> FlashWAF models logical-to-physical address translation and greedy block reclamation under synthetic full-page overwrite distributions. It does not simulate physical NAND analog timing (program/erase microseconds), multichannel interleaving, dynamic wear leveling pools, crash recovery journals, or hardware bit-error ECC. Findings characterize this simulator and do not predict physical SSD endurance.
+        </div>
+      </section>
+
+      <section id="mechanics">
+        <h2>How Write Amplification Arises in Page-Mapped FTLs</h2>
+        <p>NAND flash memory requires erasing an entire block of pages before any individual page within that block can be written. To handle frequent random overwrites from host operating systems, modern storage controllers use a <strong>Flash Translation Layer (FTL)</strong>:</p>
+        <ul>
+          <li><strong>Out-of-Place Updates:</strong> When the host overwrites an existing Logical Block Address (LBA), the FTL writes the updated payload to a newly allocated <code>FREE</code> physical page, updates its internal Logical-to-Physical (<code>L2P</code>) mapping table, and flags the previous physical location as <code>INVALID</code>.</li>
+          <li><strong>Greedy Garbage Collection:</strong> When free physical pages deplete below a configured threshold, the simulator selects a victim block with the maximum number of invalid pages (breaking ties with lower historical erase counts).</li>
+          <li><strong>Relocation Overhead:</strong> Any remaining <code>VALID</code> pages within the victim block must be copied to free pages elsewhere before the block can be erased.</li>
+        </ul>
+        <p>The resulting <strong>Write Amplification Factor (WAF)</strong> is measured directly at the physical programming interface:</p>
+        <pre><code>WAF = (Host Page Writes + GC Relocation Page Writes) / Host Page Writes</code></pre>
+      </section>
+
+      <section id="experimental-results">
+        <h2>Verified Experimental Findings</h2>
+        <p>In our primary 30-seed paired experiment (prepopulated active LBAs, 5,000 warm-up updates, 5,000 measured updates across 180 total runs; <code>experiments/research_sensitivity.py</code>), we compared uniform random traffic against disjoint 80/10 hot/cold skewed traffic at three mapped occupancy levels:</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Occupancy Ratio</th>
+              <th>Active LBAs</th>
+              <th>Uniform Mean WAF</th>
+              <th>Hot/Cold (80/10) Mean WAF</th>
+              <th>Paired Contrast (&Delta; WAF)</th>
+              <th>95% Descriptive CI (df=29)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>40%</strong></td>
+              <td>205 / 512</td>
+              <td>1.0000</td>
+              <td>1.3299</td>
+              <td><strong>+0.32987</strong></td>
+              <td>[0.32665, 0.33310]</td>
+            </tr>
+            <tr>
+              <td><strong>70%</strong></td>
+              <td>358 / 512</td>
+              <td>1.4886</td>
+              <td>2.0952</td>
+              <td><strong>+0.60656</strong></td>
+              <td>[0.60054, 0.61258]</td>
+            </tr>
+            <tr>
+              <td><strong>85%</strong></td>
+              <td>435 / 512</td>
+              <td>2.5020</td>
+              <td>3.3066</td>
+              <td><strong>+0.80465</strong></td>
+              <td>[0.78676, 0.82253]</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <img src="program_amplification.png" alt="FlashWAF Write Amplification Factor across Occupancy and Locality" class="responsive-fig">
+        <p class="fig-caption">Figure 1: Modeled write amplification across 40%, 70%, and 85% mapped occupancy under uniform vs. 80/10 hot/cold traffic across 30 paired seed blocks.</p>
+
+        <h3>Key Insight: Locality Without Data Separation</h3>
+        <p>Because FlashWAF models a simplified single-frontier FTL without hot/cold data separation, cold pages and hot pages intermix in the same physical blocks. When greedy GC reclaims victim blocks, persistent cold pages must be copied forward repeatedly, increasing write amplification compared to uniform traffic.</p>
+
+        <img src="robustness_sensitivity.png" alt="FlashWAF Sensitivity Analysis Across Warm-up, Geometry, and Workload Skew" class="responsive-fig">
+        <p class="fig-caption">Figure 2: Sensitivity analysis at 70% occupancy across warm-up duration, flash geometry, and workload distributions (80/10, 90/5, Zipf &alpha;=1.2).</p>
+      </section>
+
+      <section id="quickstart">
+        <h2>Quick Start &amp; Usage</h2>
+        <p>FlashWAF requires Python 3.9+ and has minimal dependencies (NumPy and Matplotlib). Install via pip in editable mode:</p>
+        <pre><code># Clone and install
+git clone https://github.com/apandya55/flash-waf-sim.git
+cd flash-waf-sim
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e '.[dev]'
+
+# Run the test suite
+pytest -v</code></pre>
+
+        <h3>Python Example</h3>
+        <pre><code>import random
+from flash_sim import FlashSimulator
+
+# Initialize flash: 16 erase blocks x 32 pages = 512 physical pages
+sim = FlashSimulator(num_blocks=16, pages_per_block=32)
+
+# Write full-page logical payloads
+sim.write_logical_page(lba=10, data=b"Payload A" * 450)
+assert sim.read_logical_page(lba=10).startswith(b"Payload A")
+
+# Generate 2,000 synthetic random writes across 350 LBAs (70% occupancy)
+rng = random.Random(42)
+for _ in range(2000):
+    sim.write_logical_page(lba=rng.randint(0, 349), data=b"Payload" * 450)
+
+# Check hardware invariants and compute WAF
+sim.check_invariants()
+waf = (sim.physical_page_writes + sim.gc_page_copies) / sim.physical_page_writes
+print(f"Host writes: {sim.physical_page_writes}, GC copies: {sim.gc_page_copies}, WAF: {waf:.3f}")</code></pre>
+      </section>
+
+      <section id="technical-report">
+        <h2>Scholarly Technical Report</h2>
+        <div class="card">
+          <h3>Utilization and Locality in a Prepopulated Greedy Page-Mapped Flash Simulator</h3>
+          <p><strong>Author:</strong> Arnav Pandya &bull; <strong>Date:</strong> October 2026 &bull; <strong>Identifier:</strong> Technical Report FlashWAF-TR-2026-01</p>
+          <p><strong>Abstract:</strong> We measured page-program amplification in a simplified page-mapped flash translation layer simulator at 40%, 70%, and 85% mapped-page occupancy. Each run prepopulated all active logical addresses, applied 5,000 warm-up updates, and measured the next 5,000 updates. Thirty paired pseudorandom seed blocks covered six occupancy-by-workload conditions, for 180 runs. The paired hot/cold-minus-uniform differences were +0.32987 at 40% occupancy (95% CI [0.32665, 0.33310]), +0.60656 at 70% ([0.60054, 0.61258]), and +0.80465 at 85% ([0.78676, 0.82253]). Results characterize one simulator and synthetic workload design, not physical NAND devices.</p>
+          <p><a class="badge" href="paper.pdf" style="font-size:0.95rem; padding: 0.4rem 0.8rem;">&darr; Download Full PDF (6 Pages, Text-Searchable)</a></p>
+        </div>
+      </section>
+
+      <section id="faq">
+        <h2>Frequently Asked Questions</h2>
+        <h3>How does FlashWAF compare to full-system SSD emulators like FEMU or MQSim?</h3>
+        <p>FEMU and MQSim simulate complete NVMe/PCIe hardware stacks, DRAM caches, and multichannel flash packages with nanosecond timing. FlashWAF is a lightweight, pure-Python algorithmic simulator focusing on L2P mapping, out-of-place invalidation, and greedy garbage collection. It runs quickly without C++ compilation or kernel modules, making it accessible for rapid experimentation and pedagogy.</p>
+
+        <h3>Why does hot/cold temporal locality increase write amplification under greedy GC without data separation?</h3>
+        <p>When an FTL does not physically isolate cold data from hot data, cold pages and hot pages share the same erase blocks. Hot pages invalidate rapidly, but the lingering cold pages remain valid and must be relocated by GC, preventing blocks from achieving full invalidation and causing ongoing copy overhead.</p>
+
+        <h3>Can I replay real block I/O traces?</h3>
+        <p>Yes. The simulator accepts arbitrary integer LBAs via <code>sim.write_logical_page(lba, data)</code>, allowing straightforward streaming from parsed SNIA, FIU, or custom block trace files.</p>
+      </section>
+
+      <section id="citation">
+        <h2>Citation</h2>
+        <p>If you use FlashWAF in academic research, educational courses, or comparative studies, please cite:</p>
+        <pre><code>@software{pandya2026flashwaf,
+  author       = {Pandya, Arnav},
+  title        = {{FlashWAF: a page-mapped flash simulator}},
+  month        = oct,
+  year         = 2026,
+  publisher    = {Zenodo},
+  version      = {v1.0.0},
+  doi          = {10.5281/zenodo.23655212},
+  url          = {https://doi.org/10.5281/zenodo.23655212}
+}</code></pre>
+        <p><strong>APA Format:</strong> Pandya, A. (2026). <em>FlashWAF: a page-mapped flash simulator</em> (Version 1.0.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23655212</p>
+      </section>
+    </main>
+
+    <footer>
+      <p>FlashWAF is released under the <a href="https://opensource.org/licenses/MIT">MIT License</a>. Copyright &copy; 2026 Arnav Pandya. Hosted on GitHub: <a href="https://github.com/apandya55/flash-waf-sim">apandya55/flash-waf-sim</a>.</p>
+      <p style="margin-top:0.5rem; font-size: 0.8rem;">Generative AI tools were used for test scaffolding, refactoring, and documentation drafting; simulation models, numerical validations, and analysis were verified by the author.</p>
+    </footer>
+  </div>
+</body>
+</html>

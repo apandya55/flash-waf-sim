@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Write Amplification in a Simplified Page-Mapped NAND FTL | FlashWAF</title>
+  <meta name="description" content="Technical guide on how write amplification arises in page-mapped flash translation layers: out-of-place writes, invalidation, greedy GC, and workload locality.">
+  <meta name="author" content="Arnav Pandya">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://arnavpandya.com/projects/flashwaf/explainer.html">
+
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Write Amplification in a Simplified Page-Mapped NAND Flash Translation Layer">
+  <meta property="og:description" content="An in-depth technical explanation of NAND flash constraints, FTL mapping tables, greedy garbage collection, and write amplification modeling.">
+  <meta property="og:url" content="https://arnavpandya.com/projects/flashwaf/explainer.html">
+
+  <style>
+    :root {
+      --bg-color: #fcfcfc;
+      --card-bg: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #475569;
+      --border-color: #e2e8f0;
+      --primary: #0284c7;
+      --code-bg: #f1f5f9;
+      --tag-bg: #e0f2fe;
+      --tag-text: #0369a1;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-color: #0f172a;
+        --card-bg: #1e293b;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --border-color: #334155;
+        --primary: #38bdf8;
+        --code-bg: #0b1120;
+        --tag-bg: #1e3a5f;
+        --tag-text: #7dd3fc;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.68;
+      color: var(--text-main);
+      background-color: var(--bg-color);
+      padding: 0 1rem;
+    }
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 2.5rem 0 5rem 0;
+    }
+    nav {
+      display: flex;
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1rem;
+      font-size: 0.95rem;
+    }
+    nav a { color: var(--primary); text-decoration: none; font-weight: 500; }
+    nav a:hover { text-decoration: underline; }
+    h1 { font-size: 2rem; line-height: 1.3; margin-bottom: 0.5rem; }
+    .meta { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    h2 { font-size: 1.4rem; margin: 2rem 0 0.8rem 0; border-bottom: 1px solid var(--border-color); padding-bottom: 0.3rem; }
+    h3 { font-size: 1.15rem; margin: 1.4rem 0 0.5rem 0; }
+    p { margin-bottom: 1rem; }
+    ul, ol { margin: 0 0 1.25rem 1.5rem; }
+    li { margin-bottom: 0.35rem; }
+    pre {
+      background-color: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 1rem;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.88rem;
+      margin: 1rem 0 1.5rem 0;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.9em;
+      background: var(--code-bg);
+      padding: 0.15rem 0.3rem;
+      border-radius: 3px;
+    }
+    pre code { background: none; padding: 0; }
+    table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.9rem; }
+    th, td { border: 1px solid var(--border-color); padding: 0.6rem 0.75rem; text-align: left; }
+    th { background: var(--code-bg); }
+    .callout {
+      border-left: 4px solid var(--primary);
+      padding: 0.75rem 1rem;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-left-width: 4px;
+      border-radius: 4px;
+      margin: 1.25rem 0;
+    }
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding-top: 2rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-top: 3rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="index.html">&larr; Back to FlashWAF Project Home</a>
+      <a href="https://github.com/apandya55/flash-waf-sim">GitHub</a>
+      <a href="paper.pdf">Download Technical Report (PDF)</a>
+    </nav>
+
+    <article>
+      <h1>Write Amplification in a Simplified Page-Mapped NAND Flash Translation Layer</h1>
+      <div class="meta">
+        <strong>Author:</strong> Arnav Pandya &bull; 
+        <strong>Software:</strong> FlashWAF v1.0.0 &bull; 
+        <strong>DOI:</strong> <a href="https://doi.org/10.5281/zenodo.23655212" style="color:var(--primary);">10.5281/zenodo.23655212</a>
+      </div>
+
+      <h2>1. The Fundamental Asymmetry of NAND Flash Memory</h2>
+      <p>NAND flash memory exhibits a core physical constraint: <strong>erase-before-write</strong>. In raw NAND flash:</p>
+      <ul>
+        <li><strong>Read</strong> operations occur at page granularity (e.g., 4 KiB).</li>
+        <li><strong>Program (write)</strong> operations also occur at page granularity, but only on physical pages that have been previously erased.</li>
+        <li><strong>Erase</strong> operations occur only across entire erase blocks (e.g., 32 or 64 contiguous pages).</li>
+      </ul>
+      <p>Because operating systems frequently rewrite individual logical sectors, a direct in-place update would require erasing an entire block for every single-page write. Flash controllers resolve this by interposing a <strong>Flash Translation Layer (FTL)</strong>.</p>
+
+      <h2>2. Page-Mapped FTL and Out-of-Place Updates</h2>
+      <p>In a page-mapped FTL, logical addresses (LBAs) are dynamically mapped to arbitrary physical pages. Pages transition through a three-state lifecycle:</p>
+      <ul>
+        <li><code>FREE</code>: Empty and erased. Ready to be programmed.</li>
+        <li><code>VALID</code>: Holds current user data referenced by the <code>L2P</code> mapping table.</li>
+        <li><code>INVALID</code>: Holds obsolete data from a prior write to an LBA that has since been rewritten elsewhere.</li>
+      </ul>
+      <p>When the host issues a write to an active LBA, the FTL allocates an erased <code>FREE</code> page in the open write block, programs the updated payload, updates the L2P table, and flags the previous physical location as <code>INVALID</code>.</p>
+
+      <h2>3. Greedy Garbage Collection and Relocation Cost</h2>
+      <p>As host writes deplete available free pages below a threshold (<code>gc_threshold_free_pages</code>), the FTL triggers <strong>Garbage Collection (GC)</strong>:</p>
+      <ol>
+        <li><strong>Victim Selection:</strong> The controller scans candidate blocks and greedily selects the block with the highest count of invalid pages (breaking ties with lower historical erase counts).</li>
+        <li><strong>Valid-Page Relocation:</strong> If the victim block contains remaining valid pages, those pages must be copied to free pages in another block, incrementing the GC copy counter.</li>
+        <li><strong>Block Erasure:</strong> The victim block is erased, resetting its pages to <code>FREE</code>.</li>
+      </ol>
+      <p>The <strong>Write Amplification Factor (WAF)</strong> is defined as:</p>
+      <pre><code>WAF = (Host Page Writes + GC Relocation Page Writes) / Host Page Writes</code></pre>
+
+      <h2>4. The Impact of Mapped Occupancy and Over-Provisioning</h2>
+      <p>Let $N$ be total physical pages and $M$ be active mapped LBAs. The mapped occupancy ratio is &rho; = $M / N$. As &rho; increases, the available over-provisioning space ($1 - \rho$) shrinks, reducing the number of invalid pages in candidate blocks and forcing GC to relocate more live valid pages per reclaimed block.</p>
+
+      <h2>5. Skewed Locality Without Hot/Cold Data Separation</h2>
+      <p>When write access is skewed (e.g. 80% of writes target 10% of LBAs) but all data writes to a single shared allocation frontier:</p>
+      <ul>
+        <li>Hot pages are updated rapidly and become invalid in older blocks.</li>
+        <li>Cold pages remain valid for extended durations.</li>
+        <li>Because hot and cold data share blocks, victim blocks with heavy invalid data almost always contain lingering cold pages that must be migrated forward.</li>
+      </ul>
+      <p>In FlashWAF's 30-seed paired experiment, hot/cold traffic yielded higher write amplification than uniform traffic across all occupancies (+0.33 at 40%, +0.61 at 70%, and +0.80 at 85%), demonstrating the penalty of non-partitioned allocation.</p>
+
+      <h2>6. Research Boundaries</h2>
+      <div class="callout">
+        <strong>Notice:</strong> FlashWAF is a controlled algorithmic model. It omits hardware timing, multi-channel bus interleaving, dynamic wear leveling pools, crash recovery journals, and ECC. It serves as an accessible educational and comparative tool, not an empirical hardware emulator.
+      </div>
+
+      <h2>7. References</h2>
+      <ol>
+        <li>Agarwal, S., &amp; Marrow, M. (2010). Closed-form expressions for worst-case and average write amplification in NAND flash. <em>IEEE SIEDS</em>.</li>
+        <li>Agrawal, N., et al. (2008). Design tradeoffs for SSD performance. <em>USENIX ATC</em>.</li>
+        <li>Bux, W., &amp; Iliadis, I. (2010). Performance of greedy garbage collection in flash-based solid-state drives. <em>Performance Evaluation</em>, 67(11), 1172–1186.</li>
+        <li>Desnoyers, P. (2014). Analytic modeling of SSD write performance. <em>ACM TOS</em>, 10(2), 1–25.</li>
+        <li>Hu, X.-Y., et al. (2009). Write amplification analysis in flash-based solid state drives. <em>ACM Computing Frontiers</em>, 191–200.</li>
+      </ol>
+    </article>
+
+    <footer>
+      <p>&copy; 2026 Arnav Pandya. FlashWAF is open-source research software under the <a href="https://opensource.org/licenses/MIT">MIT License</a>.</p>
+    </footer>
+  </div>
+</body>
+</html>

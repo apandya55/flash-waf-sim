@@ -4,6 +4,11 @@ title: "FlashWAF: a page-mapped flash simulator"
 authors:
   - family-names: Pandya
     given-names: Arnav
+doi: "10.5281/zenodo.23655212"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.23655212"
+    description: "Zenodo archive of FlashWAF v1.0.0"
 date-released: 2026-10-26
 type: software
 license: MIT
