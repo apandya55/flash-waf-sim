@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flash-waf-sim"
-version = "0.1.0"
-description = "NAND Flash Translation Layer (FTL) and Write Amplification Factor (WAF) Simulator with Ring Buffering"
+version = "1.0.0"
+description = "Page-mapped NAND flash simulator with greedy garbage collection and reproducible write-amplification experiments"
 readme = "README.md"
 authors = [
     { name = "Arnav Pandya" }
@@ -21,6 +21,10 @@ dependencies = [
 dev = [
     "pytest>=7.0.0",
 ]
+
+[tool.setuptools.packages.find]
+include = ["flash_sim*"]
+exclude = ["tests*", "experiments*"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"

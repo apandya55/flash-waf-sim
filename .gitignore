@@ -45,4 +45,6 @@ htmlcov/
 outputs/
 *.png
 !figures/*.png
+!research/figures/baseline_start_empty_5seed/program_amplification.png
+!research/figures/robustness_sensitivity.png
 *.svg

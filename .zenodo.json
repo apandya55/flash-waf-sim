@@ -1,0 +1,19 @@
+{
+  "title": "FlashWAF: a page-mapped flash simulator",
+  "upload_type": "software",
+  "description": "Python simulator for page allocation, out-of-place updates, greedy garbage collection, and modeled page-program amplification. Includes reproducible synthetic experiments, raw trial outputs, tests, and analysis scripts. Results characterize this simulator and do not predict physical NAND device behavior.",
+  "creators": [
+    {
+      "name": "Arnav Pandya"
+    }
+  ],
+  "license": "MIT",
+  "keywords": [
+    "NAND flash",
+    "flash translation layer",
+    "write amplification",
+    "garbage collection",
+    "simulation"
+  ],
+  "version": "1.0.0"
+}
